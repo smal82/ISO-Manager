@@ -16,29 +16,29 @@ Puoi provare l'applicazione direttamente dal tuo browser al seguente indirizzo:
 
 ## 🚀 Caratteristiche Principali
 
-L'interfaccia dinamica permette una gestione fluida dei download attraverso progress bar animate e stati differenziati che distinguono i file in attesa, in download attivo e in fase di seeding. Il sistema supporta una doppia modalità di inserimento: è possibile aggiungere singoli link Magnet tramite un campo di testo standard oppure passare alla modalità textarea per incollare intere liste multiple. L'intera lista viene mantenuta costantemente organizzata grazie a un sistema di ordinamento intelligente che raggruppa i torrent per stato e li ordina per tempo rimanente stimato (ETA).
+L'interfaccia di ISO Manager è studiata per offrire la massima flessibilità: è possibile alternare istantaneamente la grafica tra **modalità chiara e scura** per adattarsi alle preferenze visive dell'utente. Il sistema di inserimento è duale e intelligente: l'utente può scegliere di incollare un singolo magnet link o attivare la modalità multipla per processare **intere liste di magnet in una sola volta**. Una volta aggiunti, i torrent vengono gestiti da un sistema di code automatico con progress bar animate e stati differenziati (In attesa, Download, Seeding), mantenendo la lista sempre ordinata per stato e tempo rimanente (ETA).
 
-## 🧠 Algoritmi Implementati
+## 🧠 Analisi e Algoritmi Implementati
 
-Il realismo di ISO Manager è garantito dall'integrazione di diversi processi logici che lavorano in background.
+Il realismo della simulazione è garantito da una serie di processi logici integrati che operano in modo sinergico.
 
 ### Euristica di Rilevamento Rete
 
-All'apertura della pagina, il sistema avvia immediatamente una procedura di analisi euristica per calibrare i parametri di simulazione. Questo processo esegue un fingerprinting del dispositivo incrociando i dati del browser con le capacità teoriche della connessione rilevata. Se l'accesso avviene da un sistema desktop, l'algoritmo forza l'utilizzo di un profilo ottimizzato per Fibra Ottica, ignorando le limitazioni di risparmio dati tipiche dei dispositivi mobili. I risultati di questa analisi vengono utilizzati per impostare i limiti massimi di download e upload globali, garantendo che le prestazioni simulate siano coerenti con l'hardware e la rete effettiva dell'utente.
+All'apertura della pagina, il sistema avvia immediatamente una procedura di analisi euristica fondamentale per calibrare l'intera esperienza. Questo processo esegue un fingerprinting del dispositivo incrociando i dati tecnici del browser con le capacità teoriche della connessione rilevata in quel momento. Se l'accesso avviene da un sistema desktop, l'algoritmo forza l'utilizzo di un profilo ottimizzato per Fibra Ottica, ignorando le limitazioni di risparmio dati tipiche dei dispositivi mobili. I risultati di questa analisi sono determinanti: vengono utilizzati per calibrare i limiti massimi di banda (download e upload globali) e per impostare la velocità dei peer simulati, garantendo che le prestazioni visibili siano sempre coerenti con l'hardware e la rete effettiva dell'utente.
 
-### Scheduling e Queue Management
+### Gestione delle Code e Scheduling
 
-L'algoritmo gestisce una coda FIFO (First-In, First-Out) condizionata che monitora costantemente il numero di download attivi. Nuovi processi vengono avviati automaticamente solo quando si liberano slot rispetto al limite massimo impostato, garantendo stabilità alla simulazione.
+Il sistema implementa un algoritmo di scheduling basato su una coda FIFO (First-In, First-Out) condizionata. Monitora in tempo reale il numero di processi attivi e avvia automaticamente i torrent in attesa solo quando si liberano slot di banda, rispettando i limiti di stabilità definiti durante la fase di calibrazione iniziale.
 
-### Allocazione Dinamica della Banda
+### Distribuzione della Banda e Parsing
 
-Per simulare la ripartizione reale della connessione, la velocità globale viene divisa tra i download attivi. Viene applicato un fattore di jitter casuale per evitare fluttuazioni piatte e innaturali, riflettendo il comportamento variabile delle reti P2P.
+La simulazione del traffico dati avviene tramite un algoritmo di allocazione dinamica che ripartisce la velocità globale tra tutti i download attivi. Per evitare una progressione lineare e innaturale, viene applicato un fattore di jitter casuale che simula le micro-variazioni tipiche dei protocolli P2P. Parallelamente, ogni link inserito viene analizzato tramite espressioni regolari per estrarre il parametro *Display Name* (dn); questo valore viene decodificato dal formato URL per assegnare automaticamente a ogni file il suo nome corretto e leggibile.
 
-### Parsing Magnet Link
+### Logica di Ordinamento Multi-Livello
 
-Attraverso espressioni regolari, l'algoritmo analizza i metadati dei link Magnet inseriti per estrarre il parametro del nome visualizzato (dn). Questo valore viene decodificato dal formato URL per assegnare automaticamente un nome leggibile e corretto ad ogni torrent aggiunto.
+Per garantire una gestione visiva ottimale, i torrent vengono costantemente riorganizzati secondo una gerarchia a due chiavi. La priorità principale è dettata dallo stato del processo (Download attivi in cima, code al centro e Seeding in fondo alla lista), mentre la priorità secondaria ordina i file all'interno dello stesso gruppo in base al tempo stimato alla conclusione (ETA).
 
 ## 📄 Licenza
 
 Questo progetto è distribuito sotto licenza **MIT**. Puoi consultare il testo completo della licenza direttamente qui:
-[MIT License - ISO Manager](https://github.com/smal82/ISO-Manager/blob/main/LICENSE)
+[MIT License - ISO Manager](https://www.google.com/search?q=https://github.com/smal82/ISO-Manager/blob/main/LICENSE)
