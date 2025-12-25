@@ -51,4 +51,4 @@ Per garantire una gestione visiva ottimale, i torrent vengono costantemente rior
 ## 📄 Licenza
 
 Questo progetto è distribuito sotto licenza **MIT**. Puoi consultare il testo completo della licenza direttamente qui:
-[MIT License - ISO Manager](https://www.google.com/search?q=https://github.com/smal82/ISO-Manager/blob/main/LICENSE)
+[MIT License - ISO Manager](https://github.com/smal82/ISO-Manager/blob/main/LICENSE)
