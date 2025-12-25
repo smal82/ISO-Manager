@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Torrent Manager Pro - Speedtest Edition</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body data-theme="dark">
+
+    <div id="calibration-overlay">
+        <div class="loader"></div>
+        <div class="calibration-text">Calibrazione rete in corso...</div>
+        <div id="test-results" style="margin-top:10px; color:var(--accent); font-family:monospace;">Inizializzazione...</div>
+    </div>
+
+    <div id="top-bar">
+        <h1>ISO Manager</h1>
+        <div style="display:flex; gap:10px;">
+            <button id="toggle-mode" class="mode-btn">Passa a Multiplo</button>
+            <button id="theme-toggle">☀️ Light Mode</button>
+        </div>
+    </div>
+
+    <div id="input-wrapper">
+        <div class="input-group">
+            <input type="text" id="magnet-field" class="magnet-field" placeholder="Incolla Magnet Link qui...">
+            <button id="add-magnet">Aggiungi</button>
+        </div>
+    </div>
+    
+    <div class="stats-panel">
+        <div class="stat-row-4">
+            <div class="stat-box">ATTIVI<span id="count-active">0</span></div>
+            <div class="stat-box">IN CODA<span id="count-queued">0</span></div>
+            <div class="stat-box">SEEDING<span id="count-seeding">0</span></div>
+            <div class="stat-box">TOTALE<span id="count-total">0</span></div>
+        </div>
+    </div>
+
+    <div id="torrent-list"></div>
+
+    <div class="stats-panel" id="history-panel">
+        <div class="stat-row">
+            <div class="stat-box">TEMPO SESSIONE<span id="session-time">0m 0s</span></div>
+            <div class="stat-box">FILE COMPLETATI<span id="total-completed" class="highlight">0</span></div>
+            <div class="stat-box">DATI RICEVUTI<span id="total-data">0.00 GB</span></div>
+        </div>
+        <div class="stat-row">
+            <div class="stat-box">DOWNLOAD TOTALE<span id="global-down-speed" style="color:var(--speed-color)">0.0 MB/s</span></div>
+            <div class="stat-box">UPLOAD TOTALE<span id="global-up-speed" style="color:#00ff00">0.0 MB/s</span></div>
+            <div class="stat-box">DATI INVIATI<span id="total-sent">0.00 GB</span></div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="utils.js"></script>
+    <script src="network.js"></script>
+    <script src="stats-manager.js"></script>
+    <script src="torrent-logic.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
