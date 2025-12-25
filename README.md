@@ -14,6 +14,16 @@
 Puoi provare l'applicazione direttamente dal tuo browser al seguente indirizzo:
 👉 **[https://smal82.github.io/ISO-Manager/](https://smal82.github.io/ISO-Manager/)**
 
+## 📸 Anteprima Interfaccia
+
+<p align="center">
+<img src="1.png" width="400" alt="Screenshot 1">
+<img src="2.png" width="400" alt="Screenshot 2">
+<img src="3.png" width="400" alt="Screenshot 3">
+<img src="4.png" width="400" alt="Screenshot 4">
+<img src="5.png" width="400" alt="Screenshot 5">
+</p>
+
 ## 🚀 Caratteristiche Principali
 
 L'interfaccia di ISO Manager è studiata per offrire la massima flessibilità: è possibile alternare istantaneamente la grafica tra **modalità chiara e scura** per adattarsi alle preferenze visive dell'utente. Il sistema di inserimento è duale e intelligente: l'utente può scegliere di incollare un singolo magnet link o attivare la modalità multipla per processare **intere liste di magnet in una sola volta**. Una volta aggiunti, i torrent vengono gestiti da un sistema di code automatico con progress bar animate e stati differenziati (In attesa, Download, Seeding), mantenendo la lista sempre ordinata per stato e tempo rimanente (ETA).
