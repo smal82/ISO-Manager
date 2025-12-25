@@ -54,4 +54,4 @@ git clone https://github.com/smal82/ISO-Manager.git
 
 ## 📄 Licenza
 
-Questo progetto è distribuito sotto licenza **MIT**. Consulta il file [LICENSE](https://www.google.com/search?q=LICENSE) per maggiori dettagli.
+Questo progetto è distribuito sotto licenza **MIT**. Consulta il file [LICENSE](https://github.com/smal82/ISO-Manager?tab=MIT-1-ov-file) per maggiori dettagli.
