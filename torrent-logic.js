@@ -55,15 +55,12 @@ window.processInput = function() {
         lines.forEach(line => {
             const clean = line.trim();
             if (clean) {
-                const nameFromMagnet = window.parseMagnetName(clean);
-                window.addNewTorrent(nameFromMagnet);
+                window.addNewTorrent(window.parseMagnetName(clean));
             }
         });
-        // Ritorna a modalità singola dopo l'aggiunta multipla
-        window.toggleInputMode();
+        window.toggleInputMode(); // Torna a singolo e cambia il tasto
     } else {
-        const nameFromMagnet = window.parseMagnetName(rawValue);
-        window.addNewTorrent(nameFromMagnet);
+        window.addNewTorrent(window.parseMagnetName(rawValue));
     }
     $('#magnet-field').val('');
 };
@@ -83,11 +80,15 @@ window.moveTorrent = function(id, direction) {
 window.sortTorrents = function() {
     const container = $('#torrent-list');
     const items = container.children('.torrent-item').get();
+    
     const active = items.filter(i => $(i).hasClass('active-download'));
     const queued = items.filter(i => $(i).hasClass('queued'));
     const seeding = items.filter(i => $(i).hasClass('seeding'));
 
+    // Ordina i download attivi per tempo rimanente (ETA)
     active.sort((a, b) => (parseInt($(a).attr('data-remaining-sec')) || 0) - (parseInt($(b).attr('data-remaining-sec')) || 0));
+
+    // Ricostruisce la lista: Attivi (Ordinati) -> Queued (Ordine manuale DOM) -> Seeding
     container.empty().append(active).append(queued).append(seeding);
 };
 
@@ -109,35 +110,23 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true) {
     let name = customName;
     const existingNames = $('.file-name').map(function() { return $(this).text(); }).get();
 
-    if (!name) {
+    // Logica numerazione ciclica per nomi casuali o magnet
+    let baseToUse = name ? name.replace('.iso', '') : null;
+    if (!baseToUse) {
         const availableDistros = distros.filter(d => {
             const cleanD = d.replace('.iso', '');
             return !existingNames.some(existing => existing.startsWith(cleanD));
         });
+        const selected = availableDistros.length > 0 ? availableDistros[Math.floor(Math.random() * availableDistros.length)] : "iso-" + Math.random().toString(36).substr(2, 5).toUpperCase() + ".iso";
+        baseToUse = selected.replace('.iso', '');
+    }
 
-        if (availableDistros.length > 0) {
-            const baseName = availableDistros[Math.floor(Math.random() * availableDistros.length)];
-            const cleanBase = baseName.replace('.iso', '');
-            
-            if (window.historyCounters[cleanBase] === undefined) {
-                window.historyCounters[cleanBase] = 0;
-                name = baseName;
-            } else {
-                window.historyCounters[cleanBase]++;
-                name = `${cleanBase} (${window.historyCounters[cleanBase]}).iso`;
-            }
-        } else {
-            name = "iso-" + Math.random().toString(36).substr(2, 5).toUpperCase() + ".iso";
-        }
+    if (window.historyCounters[baseToUse] === undefined) {
+        window.historyCounters[baseToUse] = 0;
+        name = baseToUse + ".iso";
     } else {
-        // Applica numerazione anche ai nomi personalizzati (Magnet)
-        const cleanCustom = name.replace('.iso', '');
-        if (window.historyCounters[cleanCustom] === undefined) {
-            window.historyCounters[cleanCustom] = 0;
-        } else {
-            window.historyCounters[cleanCustom]++;
-            name = `${cleanCustom} (${window.historyCounters[cleanCustom]}).iso`;
-        }
+        window.historyCounters[baseToUse]++;
+        name = `${baseToUse} (${window.historyCounters[baseToUse]}).iso`;
     }
 
     const id = 'tr-' + Math.random().toString(36).substr(2, 7);
@@ -150,7 +139,7 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true) {
                     <span class="file-name">${name}</span>
                     <div class="controls">
                         <button class="move-btn" onclick="window.moveTorrent('${id}', 'up')">▲</button>
-                        <button class="move-btn" onclick="button window.moveTorrent('${id}', 'down')">▼</button>
+                        <button class="move-btn" onclick="window.moveTorrent('${id}', 'down')">▼</button>
                     </div>
                 </div>
                 <span class="file-size">${sizeGB} GB</span>
@@ -204,7 +193,6 @@ window.startAnimation = function(id) {
 
             $item.find('.progress-bar').css('width', '100%');
             $item.find('.progress-text').text('100%');
-            $item.find('.time-value').text('');
             $item.find('.desktop-label').text('Completato');
             $item.find('.mobile-label').text('Fine');
             
@@ -223,8 +211,11 @@ window.startAnimation = function(id) {
                 
                 $item.attr('data-current-speed', sSpeed).attr('data-sent-gb', (seedSentMB / 1024).toFixed(4));
                 $item.find('.speed-info').text(sSpeed + ' MB/s');
-                // Corretto: aggiorna il timer durante il seeding
-                $item.find('.elapsed').text('Seed: ' + window.formatTime(Math.floor((Date.now() - $item.data('seeding-start')) / 1000)));
+                
+                // AGGIORNAMENTO TIMER SEEDING:
+                const elapsedSeed = Math.floor((Date.now() - $item.data('seeding-start')) / 1000);
+                $item.find('.elapsed').text('Seed: ' + window.formatTime(elapsedSeed));
+                $item.find('.time-value').text(window.formatTime(Math.max(0, (window.CONFIG.SEEDING_DURATION / 1000) - elapsedSeed)));
             }, window.CONFIG.UPDATE_INTERVAL);
             
             setTimeout(() => { 
@@ -239,6 +230,9 @@ window.startAnimation = function(id) {
             $item.find('.speed-info').text(currentSpeed + ' MB/s');
             $item.find('.elapsed').text('Passato: ' + window.formatTime(Math.floor((Date.now() - torrentStartTime) / 1000)));
             $item.find('.time-value').text(window.formatTime(remainingSec));
+            
+            // Riordina automaticamente mentre scarica per mantenere l'ETA corretto
+            window.sortTorrents();
         }
     }, window.CONFIG.UPDATE_INTERVAL);
 };
