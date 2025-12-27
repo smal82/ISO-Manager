@@ -1,6 +1,6 @@
 const distros = ["ubuntu-24.04.iso", "debian-12.iso", "fedora-40.iso", "arch-2024.iso", "mint-21.iso", "kali-2024.iso", "manjaro.iso", "pop-os.iso", "tails-6.iso", "opensuse.iso", "alma-9.iso", "rocky-9.iso", "gentoo.iso", "slackware.iso", "void.iso", "mx-23.iso", "endeavour.iso", "garuda.iso", "zorin-17.iso", "elementary.iso"];
 
-// Oggetto per tenere traccia di quante volte ogni distro è stata completata
+// Registro storico per i reinserimenti
 window.historyCounters = {};
 
 window.isMultipleMode = false;
@@ -106,18 +106,22 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true) {
     let name = customName;
     if (!name) {
         const existingNames = $('.file-name').map(function() { return $(this).text(); }).get();
-        // Filtriamo le distro base che non sono attualmente in lista (con o senza suffisso)
+        
+        // Escludiamo le distro che sono già presenti in lista
         const availableDistros = distros.filter(d => {
-            return !existingNames.some(existing => existing.startsWith(d.replace('.iso', '')));
+            const cleanD = d.replace('.iso', '');
+            return !existingNames.some(existing => existing.startsWith(cleanD));
         });
 
         if (availableDistros.length > 0) {
             const baseName = availableDistros[Math.floor(Math.random() * availableDistros.length)];
             const cleanBase = baseName.replace('.iso', '');
             
-            // Incrementiamo o inizializziamo il contatore storico per questa distro
-            if (!window.historyCounters[cleanBase]) {
-                window.historyCounters[cleanBase] = 1;
+            // Logica dei cicli: 
+            // - La prima volta (undefined) usa il nome base.
+            // - Dal primo reinserimento in poi (0, 1, 2...) aggiunge (1), (2), etc.
+            if (window.historyCounters[cleanBase] === undefined) {
+                window.historyCounters[cleanBase] = 0; 
                 name = baseName;
             } else {
                 window.historyCounters[cleanBase]++;
