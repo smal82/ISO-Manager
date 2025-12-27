@@ -54,15 +54,20 @@ window.processInput = function() {
         const lines = rawValue.split(/\r?\n/);
         lines.forEach(line => {
             const clean = line.trim();
-            if (clean) window.addNewTorrent(window.parseMagnetName(clean));
+            if (clean) {
+                const nameFromMagnet = window.parseMagnetName(clean);
+                window.addNewTorrent(nameFromMagnet);
+            }
         });
+        // Ritorna a modalità singola dopo l'aggiunta multipla
+        window.toggleInputMode();
     } else {
-        window.addNewTorrent(window.parseMagnetName(rawValue));
+        const nameFromMagnet = window.parseMagnetName(rawValue);
+        window.addNewTorrent(nameFromMagnet);
     }
-    field.val('');
+    $('#magnet-field').val('');
 };
 
-// Nuova funzione per spostare i torrent manualmente
 window.moveTorrent = function(id, direction) {
     const $item = $('#' + id);
     if (direction === 'up') {
@@ -72,23 +77,17 @@ window.moveTorrent = function(id, direction) {
         const $next = $item.next('.torrent-item.queued');
         if ($next.length) $item.insertAfter($next);
     }
-    // Non chiamiamo sortTorrents qui perché annullerebbe lo spostamento manuale
     window.manageWorkflow(); 
 };
 
 window.sortTorrents = function() {
     const container = $('#torrent-list');
     const items = container.children('.torrent-item').get();
-    
-    // Separiamo gli elementi per stato
     const active = items.filter(i => $(i).hasClass('active-download'));
     const queued = items.filter(i => $(i).hasClass('queued'));
     const seeding = items.filter(i => $(i).hasClass('seeding'));
 
-    // Ordiniamo solo attivi (per tempo) e seeding (ordine di arrivo/seeding)
     active.sort((a, b) => (parseInt($(a).attr('data-remaining-sec')) || 0) - (parseInt($(b).attr('data-remaining-sec')) || 0));
-
-    // Ricostruiamo la lista: Attivi -> Queued (nell'ordine in cui sono nel DOM) -> Seeding
     container.empty().append(active).append(queued).append(seeding);
 };
 
@@ -100,7 +99,6 @@ window.manageWorkflow = function() {
     }
     const activeCount = $('.active-download').length;
     if (activeCount < window.CONFIG.MAX_ACTIVE) {
-        // Prende i primi della lista "queued" rispettando l'ordine del DOM (manuale)
         $('.torrent-item.queued').slice(0, window.CONFIG.MAX_ACTIVE - activeCount).each(function() { window.startAnimation($(this).attr('id')); });
     }
     window.sortTorrents();
@@ -109,8 +107,9 @@ window.manageWorkflow = function() {
 
 window.addNewTorrent = function(customName = null, triggerWorkflow = true) {
     let name = customName;
+    const existingNames = $('.file-name').map(function() { return $(this).text(); }).get();
+
     if (!name) {
-        const existingNames = $('.file-name').map(function() { return $(this).text(); }).get();
         const availableDistros = distros.filter(d => {
             const cleanD = d.replace('.iso', '');
             return !existingNames.some(existing => existing.startsWith(cleanD));
@@ -119,6 +118,7 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true) {
         if (availableDistros.length > 0) {
             const baseName = availableDistros[Math.floor(Math.random() * availableDistros.length)];
             const cleanBase = baseName.replace('.iso', '');
+            
             if (window.historyCounters[cleanBase] === undefined) {
                 window.historyCounters[cleanBase] = 0;
                 name = baseName;
@@ -128,6 +128,15 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true) {
             }
         } else {
             name = "iso-" + Math.random().toString(36).substr(2, 5).toUpperCase() + ".iso";
+        }
+    } else {
+        // Applica numerazione anche ai nomi personalizzati (Magnet)
+        const cleanCustom = name.replace('.iso', '');
+        if (window.historyCounters[cleanCustom] === undefined) {
+            window.historyCounters[cleanCustom] = 0;
+        } else {
+            window.historyCounters[cleanCustom]++;
+            name = `${cleanCustom} (${window.historyCounters[cleanCustom]}).iso`;
         }
     }
 
@@ -141,7 +150,7 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true) {
                     <span class="file-name">${name}</span>
                     <div class="controls">
                         <button class="move-btn" onclick="window.moveTorrent('${id}', 'up')">▲</button>
-                        <button class="move-btn" onclick="window.moveTorrent('${id}', 'down')">▼</button>
+                        <button class="move-btn" onclick="button window.moveTorrent('${id}', 'down')">▼</button>
                     </div>
                 </div>
                 <span class="file-size">${sizeGB} GB</span>
@@ -171,10 +180,12 @@ window.startAnimation = function(id) {
     
     const interval = setInterval(() => {
         if (!$item.length || $item.hasClass('seeding')) { clearInterval(interval); return; }
+        
         const activeCount = $('.active-download').length;
         const totalUpNodes = activeCount + $('.seeding').length;
         const currentSpeed = ((window.CONFIG.MAX_GLOBAL_DOWNLOAD_MBPS / activeCount) * (0.9 + Math.random() * 0.2)).toFixed(1);
         const currentUpSpeed = totalUpNodes > 0 ? ((window.CONFIG.MAX_GLOBAL_UPLOAD_MBPS / totalUpNodes) * (0.6 + Math.random() * 0.4)).toFixed(1) : 0;
+        
         downloadedMB += (currentSpeed * (window.CONFIG.UPDATE_INTERVAL / 1000));
         sentMB += (currentUpSpeed * (window.CONFIG.UPDATE_INTERVAL / 1000));
         let percent = (downloadedMB / totalMB) * 100;
@@ -187,10 +198,16 @@ window.startAnimation = function(id) {
             window.totalFilesCompleted++;
             window.historicalDataGB = (parseFloat(window.historicalDataGB) || 0) + sizeGB;
             window.historicalSentGB = (parseFloat(window.historicalSentGB) || 0) + (sentMB / 1024);
+            
             $item.removeClass('active-download').addClass('seeding').data('seeding-start', Date.now()).attr('data-remaining-sec', 999999);
             window.sortTorrents();
+
             $item.find('.progress-bar').css('width', '100%');
             $item.find('.progress-text').text('100%');
+            $item.find('.time-value').text('');
+            $item.find('.desktop-label').text('Completato');
+            $item.find('.mobile-label').text('Fine');
+            
             window.manageWorkflow();
             
             let seedSentMB = 0;
@@ -200,14 +217,22 @@ window.startAnimation = function(id) {
                     clearInterval(seedInt); 
                     return; 
                 }
-                const sSpeed = ((window.CONFIG.MAX_GLOBAL_UPLOAD_MBPS / ($('.seeding').length + $('.active-download').length)) * (0.8 + Math.random() * 0.4)).toFixed(1);
+                const currentTotalUpNodes = $('.seeding').length + $('.active-download').length;
+                const sSpeed = ((window.CONFIG.MAX_GLOBAL_UPLOAD_MBPS / currentTotalUpNodes) * (0.8 + Math.random() * 0.4)).toFixed(1);
                 seedSentMB += (sSpeed * (window.CONFIG.UPDATE_INTERVAL / 1000));
+                
                 $item.attr('data-current-speed', sSpeed).attr('data-sent-gb', (seedSentMB / 1024).toFixed(4));
                 $item.find('.speed-info').text(sSpeed + ' MB/s');
+                // Corretto: aggiorna il timer durante il seeding
                 $item.find('.elapsed').text('Seed: ' + window.formatTime(Math.floor((Date.now() - $item.data('seeding-start')) / 1000)));
             }, window.CONFIG.UPDATE_INTERVAL);
             
-            setTimeout(() => { $item.fadeOut(500, function() { $(this).remove(); window.manageWorkflow(); }); }, window.CONFIG.SEEDING_DURATION);
+            setTimeout(() => { 
+                $item.fadeOut(500, function() { 
+                    $(this).remove(); 
+                    window.manageWorkflow(); 
+                }); 
+            }, window.CONFIG.SEEDING_DURATION);
         } else {
             $item.find('.progress-bar').css('width', percent + '%');
             $item.find('.progress-text').text(Math.floor(percent) + '%');
