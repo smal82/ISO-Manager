@@ -3,17 +3,41 @@ const distros = ["ubuntu-24.04.iso", "debian-12.iso", "fedora-40.iso", "arch-202
 window.historyCounters = {};
 window.isMultipleMode = false;
 
-window.parseMagnetName = function(magnet) {
+window.parseMagnetData = function(magnet) {
     if (!magnet || typeof magnet !== 'string') return null;
+    
+    let name = null;
     const dnMatch = magnet.match(/dn=([^&]+)/);
     if (dnMatch && dnMatch[1]) {
         try {
-            return decodeURIComponent(dnMatch[1].replace(/\+/g, ' '));
+            name = decodeURIComponent(dnMatch[1].replace(/\+/g, ' '));
         } catch (e) {
-            return dnMatch[1].replace(/\+/g, ' ');
+            name = dnMatch[1].replace(/\+/g, ' ');
         }
     }
-    return null;
+
+    let sizeGB = null;
+    const xlMatch = magnet.match(/xl=([^&]+)/);
+    if (xlMatch && xlMatch[1]) {
+        const bytes = parseInt(xlMatch[1]);
+        if (!isNaN(bytes)) sizeGB = (bytes / (1024 * 1024 * 1024)).toFixed(2);
+    } else if (name) {
+        const upperName = name.toUpperCase();
+        
+        // Logica estesa di stima dimensioni
+        if (upperName.includes("2160P") || upperName.includes("4K")) {
+            // Tra 20GB e 60GB per 4K
+            sizeGB = (Math.random() * (60 - 20) + 20).toFixed(2);
+        } else if (upperName.includes("1080P")) {
+            // Tra 6GB e 16GB per Full HD
+            sizeGB = (Math.random() * (16 - 6) + 6).toFixed(2);
+        } else if (upperName.includes("720P") || upperName.includes("SD") || upperName.includes("XVID") || upperName.includes("DVD")) {
+            // Non supera i 2GB per 720p, SD o Xvid (minimo 0.7GB per coerenza)
+            sizeGB = (Math.random() * (2.0 - 0.7) + 0.7).toFixed(2);
+        }
+    }
+
+    return { name, sizeGB };
 };
 
 window.toggleInputMode = function() {
@@ -54,11 +78,15 @@ window.processInput = function() {
         const lines = rawValue.split(/\r?\n/);
         lines.forEach(line => {
             const clean = line.trim();
-            if (clean) window.addNewTorrent(window.parseMagnetName(clean));
+            if (clean) {
+                const data = window.parseMagnetData(clean);
+                window.addNewTorrent(data.name, true, data.sizeGB);
+            }
         });
         window.toggleInputMode();
     } else {
-        window.addNewTorrent(window.parseMagnetName(rawValue));
+        const data = window.parseMagnetData(rawValue);
+        window.addNewTorrent(data.name, true, data.sizeGB);
     }
     $('#magnet-field').val('');
 };
@@ -112,7 +140,7 @@ window.manageWorkflow = function() {
     window.updateStats();
 };
 
-window.addNewTorrent = function(customName = null, triggerWorkflow = true) {
+window.addNewTorrent = function(customName = null, triggerWorkflow = true, fixedSize = null) {
     let fullName = customName;
     const existingNames = $('.file-name').map(function() { return $(this).text(); }).get();
 
@@ -121,14 +149,11 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true) {
         fullName = availableDistros.length > 0 ? availableDistros[Math.floor(Math.random() * availableDistros.length)] : "iso-" + Math.random().toString(36).substr(2, 5).toUpperCase() + ".iso";
     }
 
-    // Separazione nome base ed estensione
     let baseName, extension;
     const lastDotIndex = fullName.lastIndexOf('.');
-    
-    // Consideriamo estensione solo se il punto non è all'inizio e ci sono 2-4 caratteri dopo
     if (lastDotIndex > 0 && fullName.length - lastDotIndex <= 5) {
         baseName = fullName.substring(0, lastDotIndex);
-        extension = fullName.substring(lastDotIndex); // es: .iso, .zip
+        extension = fullName.substring(lastDotIndex);
     } else {
         baseName = fullName;
         extension = "";
@@ -144,7 +169,7 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true) {
     }
 
     const id = 'tr-' + Math.random().toString(36).substr(2, 7);
-    const sizeGB = (Math.random() * (window.CONFIG.MAX_SIZE_GB - window.CONFIG.MIN_SIZE_GB) + window.CONFIG.MIN_SIZE_GB).toFixed(2);
+    const sizeGB = fixedSize ? fixedSize : (Math.random() * (window.CONFIG.MAX_SIZE_GB - window.CONFIG.MIN_SIZE_GB) + window.CONFIG.MIN_SIZE_GB).toFixed(2);
     
     const html = `
         <div class="torrent-item queued" id="${id}" data-base-name="${fullName}" data-size="${sizeGB}" data-current-speed="0" data-current-up-speed="0" data-downloaded-gb="0" data-sent-gb="0" data-remaining-sec="999999">
@@ -209,6 +234,7 @@ window.startAnimation = function(id) {
             $item.removeClass('active-download').addClass('seeding');
             const seedingStartTime = Date.now();
             const originalFullName = $item.attr('data-base-name');
+            const originalSize = $item.attr('data-size');
             
             $item.find('.progress-bar').css('width', '100%');
             $item.find('.progress-text').text('100%');
@@ -237,7 +263,7 @@ window.startAnimation = function(id) {
             setTimeout(() => { 
                 $item.fadeOut(500, function() { 
                     $(this).remove(); 
-                    window.addNewTorrent(originalFullName);
+                    window.addNewTorrent(originalFullName, true, originalSize);
                     window.manageWorkflow(); 
                 }); 
             }, window.CONFIG.SEEDING_DURATION);
