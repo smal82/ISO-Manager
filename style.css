@@ -10,6 +10,7 @@
     --speed-color: #00ff41;
     --progress-bg: #222;
     --download-bar: #0078d4;
+    --danger: #d32f2f;
 }
 
 [data-theme="light"] {
@@ -24,6 +25,7 @@
     --speed-color: #1a7f37;
     --progress-bg: #e0e0e0;
     --download-bar: #0078d4;
+    --danger: #c62828;
 }
 
 * { box-sizing: border-box; }
@@ -50,7 +52,6 @@ h1 { text-align: center; color: var(--accent); text-transform: uppercase; font-s
 .file-info { display: flex; justify-content: space-between; align-items: center; }
 .name-box { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; overflow: hidden; }
 
-/* Logica di troncamento centrale dinamica */
 .file-name { 
     display: flex; 
     font-weight: bold; 
@@ -60,23 +61,16 @@ h1 { text-align: center; color: var(--accent); text-transform: uppercase; font-s
     white-space: nowrap; 
     max-width: 100%;
 }
-.name-part-1 { 
-    overflow: hidden; 
-    text-overflow: ellipsis; 
-    white-space: nowrap; 
-    flex-shrink: 1; 
-}
-.name-part-2 { 
-    flex-shrink: 0; 
-    white-space: nowrap;
-}
+.name-part-1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1; }
+.name-part-2 { flex-shrink: 0; white-space: nowrap; }
 
 .file-size { font-size: 0.95rem; color: var(--download-bar); font-weight: bold; margin-left: 10px; flex-shrink: 0; }
 
-.move-controls { display: none; gap: 4px; flex-shrink: 0; }
+.move-controls { display: none; gap: 6px; flex-shrink: 0; align-items: center; }
 .torrent-item.queued .move-controls { display: flex; }
-.move-controls button { background: var(--border-color); border: none; color: var(--text-bright); padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
+.move-controls button { background: var(--border-color); border: none; color: var(--text-bright); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; line-height: 1; height: 28px; display: flex; align-items: center; justify-content: center; }
 .move-controls button:hover { background: var(--accent); }
+.move-controls .btn-remove:hover { background: var(--danger); }
 
 .progress-container { position: relative; background: var(--progress-bg); height: 28px; border-radius: 6px; overflow: hidden; }
 .progress-bar { height: 100%; background: var(--download-bar); width: 0%; transition: width 0.4s ease; }
