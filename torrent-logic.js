@@ -1,5 +1,8 @@
 const distros = ["ubuntu-24.04.iso", "debian-12.iso", "fedora-40.iso", "arch-2024.iso", "mint-21.iso", "kali-2024.iso", "manjaro.iso", "pop-os.iso", "tails-6.iso", "opensuse.iso", "alma-9.iso", "rocky-9.iso", "gentoo.iso", "slackware.iso", "void.iso", "mx-23.iso", "endeavour.iso", "garuda.iso", "zorin-17.iso", "elementary.iso"];
 
+// Oggetto per tenere traccia di quante volte ogni distro è stata completata
+window.historyCounters = {};
+
 window.isMultipleMode = false;
 
 window.parseMagnetName = function(magnet) {
@@ -71,24 +74,18 @@ window.sortTorrents = function() {
     const items = container.children('.torrent-item').get();
     
     items.sort(function(a, b) {
-        // NUOVO ORDINE: 1. Active, 2. Queued, 3. Seeding (In fondo)
         const order = { 'active-download': 1, 'queued': 2, 'seeding': 3 };
         const classA = $(a).hasClass('active-download') ? 'active-download' : ($(a).hasClass('seeding') ? 'seeding' : 'queued');
         const classB = $(b).hasClass('active-download') ? 'active-download' : ($(b).hasClass('seeding') ? 'seeding' : 'queued');
         
-        if (order[classA] !== order[classB]) {
-            return order[classA] - order[classB];
-        }
+        if (order[classA] !== order[classB]) return order[classA] - order[classB];
 
-        // Se entrambi attivi, ordina per tempo rimanente (chi finisce prima sta sopra)
         const remA = parseInt($(a).attr('data-remaining-sec')) || 0;
         const remB = parseInt($(b).attr('data-remaining-sec')) || 0;
         return remA - remB;
     });
     
-    $.each(items, function(i, li) {
-        container.append(li);
-    });
+    $.each(items, function(i, li) { container.append(li); });
 };
 
 window.manageWorkflow = function() {
@@ -109,9 +106,28 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true) {
     let name = customName;
     if (!name) {
         const existingNames = $('.file-name').map(function() { return $(this).text(); }).get();
-        const availableNames = distros.filter(d => !existingNames.includes(d));
-        name = availableNames.length > 0 ? availableNames[Math.floor(Math.random() * availableNames.length)] : "iso-" + Math.random().toString(36).substr(2, 5).toUpperCase() + ".iso";
+        // Filtriamo le distro base che non sono attualmente in lista (con o senza suffisso)
+        const availableDistros = distros.filter(d => {
+            return !existingNames.some(existing => existing.startsWith(d.replace('.iso', '')));
+        });
+
+        if (availableDistros.length > 0) {
+            const baseName = availableDistros[Math.floor(Math.random() * availableDistros.length)];
+            const cleanBase = baseName.replace('.iso', '');
+            
+            // Incrementiamo o inizializziamo il contatore storico per questa distro
+            if (!window.historyCounters[cleanBase]) {
+                window.historyCounters[cleanBase] = 1;
+                name = baseName;
+            } else {
+                window.historyCounters[cleanBase]++;
+                name = `${cleanBase} (${window.historyCounters[cleanBase]}).iso`;
+            }
+        } else {
+            name = "iso-" + Math.random().toString(36).substr(2, 5).toUpperCase() + ".iso";
+        }
     }
+
     const id = 'tr-' + Math.random().toString(36).substr(2, 7);
     const sizeGB = (Math.random() * (window.CONFIG.MAX_SIZE_GB - window.CONFIG.MIN_SIZE_GB) + window.CONFIG.MIN_SIZE_GB).toFixed(2);
     const html = `
@@ -159,10 +175,7 @@ window.startAnimation = function(id) {
             window.historicalDataGB = (parseFloat(window.historicalDataGB) || 0) + sizeGB;
             window.historicalSentGB = (parseFloat(window.historicalSentGB) || 0) + (sentMB / 1024);
             
-            // Passaggio a SEEDING
             $item.removeClass('active-download').addClass('seeding').data('seeding-start', Date.now()).attr('data-remaining-sec', 999999);
-            
-            // Forziamo il riordino in fondo
             window.sortTorrents();
 
             $item.find('.progress-bar').css('width', '100%');
