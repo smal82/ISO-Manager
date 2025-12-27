@@ -9,6 +9,22 @@
 
 **ISO Manager** è un simulatore avanzato di gestione download torrent, progettato per emulare l'esperienza d'uso di un client BitTorrent moderno direttamente nel browser. Il progetto si focalizza sulla gestione dinamica delle code, la visualizzazione in tempo reale delle statistiche di rete e l'automazione del workflow di download e seeding.
 
+## ✨ Aggiornamenti Recenti e Raffinamento UI
+
+L'ultima iterazione del progetto ha introdotto miglioramenti significativi focalizzati sull'usabilità e sulla precisione della gestione delle code:
+
+### 🧩 Troncamento Centrale Dinamico (Middle-Truncation)
+Per garantire la massima leggibilità su ogni dispositivo, è stata implementata una logica di visualizzazione intelligente dei nomi dei file. A differenza dei metodi standard che tagliano il testo alla fine, ISO Manager utilizza una combinazione di **JavaScript e Flexbox CSS** per preservare sempre l'estensione e gli ultimi caratteri del file. Il sistema valuta dinamicamente lo spazio disponibile: se il nome rientra nell'area visiva appare intero, altrimenti viene applicato un taglio con ellissi esattamente al centro, garantendo un'estetica pulita sia su Desktop che su Mobile.
+
+### 🗑️ Gestione Selettiva e Coda Dinamica
+Il controllo sulla lista dei download è stato potenziato con nuove funzionalità:
+* **Cancellazione Manuale:** È ora possibile rimuovere singoli torrent direttamente dalla coda (stato "In attesa").
+* **Blacklist Intelligente:** Se un utente elimina una delle distro predefinite caricate all'avvio, il sistema la inserisce automaticamente in una blacklist temporanea. Questo impedisce al software di re-inserire lo stesso file durante i cicli di riempimento automatico della sessione corrente.
+* **Flessibilità del Fill-Limit:** All'avvio l'applicazione rispetta rigorosamente il `FILL_LIMIT` configurato (default 20), ma permette all'utente di ridurre volontariamente la dimensione della coda tramite eliminazione manuale, senza forzare il ripristino di file non richiesti.
+
+### 📱 Ottimizzazione Mobile First
+L'interfaccia è stata raffinata per il tocco (touch-friendly). I controlli di ordinamento (Sposta Su/Giù) e il pulsante di rimozione sono stati ridimensionati e distanziati per evitare tocchi accidentali, migliorando l'esperienza d'uso su smartphone.
+
 ## 🌐 Demo Online
 
 Puoi provare l'applicazione direttamente dal tuo browser al seguente indirizzo:
