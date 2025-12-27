@@ -56,7 +56,6 @@ window.processInput = function() {
             const clean = line.trim();
             if (clean) window.addNewTorrent(window.parseMagnetName(clean));
         });
-        // Ritorna automaticamente alla modalità singola dopo l'invio multiplo
         window.toggleInputMode();
     } else {
         window.addNewTorrent(window.parseMagnetName(rawValue));
@@ -114,40 +113,44 @@ window.manageWorkflow = function() {
 };
 
 window.addNewTorrent = function(customName = null, triggerWorkflow = true) {
-    let name = customName;
+    let fullName = customName;
     const existingNames = $('.file-name').map(function() { return $(this).text(); }).get();
 
-    let cleanBase;
-    if (name) {
-        // Se è un nome personalizzato (es. magnet), puliamo l'estensione se presente
-        cleanBase = name.replace('.iso', '');
-    } else {
-        // Se è un riempimento automatico, scegliamo una distro non presente
-        const availableDistros = distros.filter(d => {
-            const dName = d.replace('.iso', '');
-            return !existingNames.some(existing => existing.startsWith(dName));
-        });
-        const selected = availableDistros.length > 0 ? availableDistros[Math.floor(Math.random() * availableDistros.length)] : "iso-" + Math.random().toString(36).substr(2, 5).toUpperCase() + ".iso";
-        cleanBase = selected.replace('.iso', '');
+    if (!fullName) {
+        const availableDistros = distros.filter(d => !existingNames.some(existing => existing.startsWith(d.replace('.iso', ''))));
+        fullName = availableDistros.length > 0 ? availableDistros[Math.floor(Math.random() * availableDistros.length)] : "iso-" + Math.random().toString(36).substr(2, 5).toUpperCase() + ".iso";
     }
 
-    // Logica numerazione (1), (2) persistente nel historyCounters
-    if (window.historyCounters[cleanBase] === undefined) {
-        window.historyCounters[cleanBase] = 0;
-        name = cleanBase + ".iso";
+    // Separazione nome base ed estensione
+    let baseName, extension;
+    const lastDotIndex = fullName.lastIndexOf('.');
+    
+    // Consideriamo estensione solo se il punto non è all'inizio e ci sono 2-4 caratteri dopo
+    if (lastDotIndex > 0 && fullName.length - lastDotIndex <= 5) {
+        baseName = fullName.substring(0, lastDotIndex);
+        extension = fullName.substring(lastDotIndex); // es: .iso, .zip
     } else {
-        window.historyCounters[cleanBase]++;
-        name = `${cleanBase} (${window.historyCounters[cleanBase]}).iso`;
+        baseName = fullName;
+        extension = "";
+    }
+
+    let finalDisplayName;
+    if (window.historyCounters[baseName] === undefined) {
+        window.historyCounters[baseName] = 0;
+        finalDisplayName = baseName + extension;
+    } else {
+        window.historyCounters[baseName]++;
+        finalDisplayName = `${baseName} (${window.historyCounters[baseName]})${extension}`;
     }
 
     const id = 'tr-' + Math.random().toString(36).substr(2, 7);
     const sizeGB = (Math.random() * (window.CONFIG.MAX_SIZE_GB - window.CONFIG.MIN_SIZE_GB) + window.CONFIG.MIN_SIZE_GB).toFixed(2);
     
     const html = `
-        <div class="torrent-item queued" id="${id}" data-base-name="${cleanBase}" data-size="${sizeGB}" data-current-speed="0" data-current-up-speed="0" data-downloaded-gb="0" data-sent-gb="0" data-remaining-sec="999999">
+        <div class="torrent-item queued" id="${id}" data-base-name="${fullName}" data-size="${sizeGB}" data-current-speed="0" data-current-up-speed="0" data-downloaded-gb="0" data-sent-gb="0" data-remaining-sec="999999">
             <div class="file-info">
                 <div class="name-box">
-                    <span class="file-name">${name}</span>
+                    <span class="file-name">${finalDisplayName}</span>
                     <div class="move-controls">
                         <button onclick="window.moveTorrent(this, 'up')">▲</button>
                         <button onclick="window.moveTorrent(this, 'down')">▼</button>
@@ -205,7 +208,7 @@ window.startAnimation = function(id) {
             
             $item.removeClass('active-download').addClass('seeding');
             const seedingStartTime = Date.now();
-            const originalBaseName = $item.attr('data-base-name'); // Recuperiamo il nome originale salvato
+            const originalFullName = $item.attr('data-base-name');
             
             $item.find('.progress-bar').css('width', '100%');
             $item.find('.progress-text').text('100%');
@@ -231,12 +234,10 @@ window.startAnimation = function(id) {
                 $item.find('.elapsed').text('Seed: ' + window.formatTime(Math.floor((Date.now() - seedingStartTime) / 1000)));
             }, window.CONFIG.UPDATE_INTERVAL);
             
-            // Alla fine del seeding, reinseriamo il file invece di eliminarlo semplicemente
             setTimeout(() => { 
                 $item.fadeOut(500, function() { 
                     $(this).remove(); 
-                    // Reinserimento con il nome base originale per far scattare la numerazione (1), (2), etc.
-                    window.addNewTorrent(originalBaseName);
+                    window.addNewTorrent(originalFullName);
                     window.manageWorkflow(); 
                 }); 
             }, window.CONFIG.SEEDING_DURATION);
