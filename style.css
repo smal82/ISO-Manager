@@ -80,7 +80,6 @@ h1 { text-align: center; color: var(--accent); text-transform: uppercase; font-s
     border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 10px;
 }
 
-/* Griglie statistiche */
 .stat-row-4 { display: grid; grid-template-columns: repeat(4, 1fr); width: 100%; gap: 10px; text-align: center; }
 .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; gap: 12px; text-align: center; }
 .stat-row:not(:last-child) { border-bottom: 1px solid var(--border-color); padding-bottom: 12px; }
@@ -89,18 +88,15 @@ h1 { text-align: center; color: var(--accent); text-transform: uppercase; font-s
 .stat-box span { color: var(--text-bright); display: block; font-size: 1.25rem; margin-top: 5px; }
 .highlight { color: var(--accent) !important; }
 
-/* Lista Torrent */
 #torrent-list { max-width: 800px; margin: 0 auto 15px auto; background: var(--item-bg); border: 1px solid var(--border-color); border-radius: 8px; }
 
 .torrent-item { display: flex; flex-direction: column; padding: 18px; border-bottom: 1px solid var(--border-color); gap: 12px; }
 
-/* NUOVA SEZIONE: Struttura allineata per pulsanti e nome */
 .file-info { display: flex; justify-content: space-between; align-items: center; }
 .name-container { display: flex; align-items: center; gap: 12px; overflow: hidden; flex: 1; }
 .file-name { font-weight: bold; color: var(--text-bright); font-size: 1.1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .file-size { font-size: 0.95rem; color: var(--download-bar); font-weight: bold; margin-left: 10px; }
 
-/* NUOVA SEZIONE: Frecce riordino */
 .controls { display: none; gap: 4px; }
 .torrent-item.queued .controls { display: flex; }
 .move-btn {
@@ -153,7 +149,6 @@ h1 { text-align: center; color: var(--accent); text-transform: uppercase; font-s
 .loader { width: 60px; height: 60px; border: 6px solid var(--panel-bg); border-top: 6px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-/* Colore verde per i torrent in seeding */
 .torrent-item.seeding .progress-bar {
     background: #27ae60 !important;
 }
