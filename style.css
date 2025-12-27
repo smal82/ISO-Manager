@@ -92,18 +92,24 @@ h1 { text-align: center; color: var(--accent); text-transform: uppercase; font-s
 
 .torrent-item { display: flex; flex-direction: column; padding: 18px; border-bottom: 1px solid var(--border-color); gap: 12px; }
 
+/* Stili per il nome e pulsanti spostamento */
 .file-info { display: flex; justify-content: space-between; align-items: center; }
-.name-container { display: flex; align-items: center; gap: 12px; overflow: hidden; flex: 1; }
+.name-box { display: flex; align-items: center; gap: 10px; overflow: hidden; flex: 1; }
 .file-name { font-weight: bold; color: var(--text-bright); font-size: 1.1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .file-size { font-size: 0.95rem; color: var(--download-bar); font-weight: bold; margin-left: 10px; }
 
-.controls { display: none; gap: 4px; }
-.torrent-item.queued .controls { display: flex; }
-.move-btn {
-    background: var(--border-color); border: none; color: var(--text-bright); 
-    padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;
+.move-controls { display: none; gap: 4px; }
+.torrent-item.queued .move-controls { display: flex; }
+.move-controls button {
+    background: var(--border-color);
+    border: none;
+    color: var(--text-bright);
+    padding: 2px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
 }
-.move-btn:hover { background: var(--accent); }
+.move-controls button:hover { background: var(--accent); }
 
 .progress-section { width: 100%; }
 .progress-container { position: relative; background: var(--progress-bg); height: 28px; border-radius: 6px; overflow: hidden; }
