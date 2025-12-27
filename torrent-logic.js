@@ -3,6 +3,14 @@ const distros = ["ubuntu-24.04.iso", "debian-12.iso", "fedora-40.iso", "arch-202
 window.historyCounters = {};
 window.isMultipleMode = false;
 
+// Funzione per accorciare il nome al centro
+window.truncateName = function(name, startChars = 25, endChars = 15) {
+    if (name.length <= (startChars + endChars + 3)) return name;
+    const start = name.substring(0, startChars);
+    const end = name.substring(name.length - endChars);
+    return `${start}...${end}`;
+};
+
 window.parseMagnetData = function(magnet) {
     if (!magnet || typeof magnet !== 'string') return null;
     
@@ -23,16 +31,11 @@ window.parseMagnetData = function(magnet) {
         if (!isNaN(bytes)) sizeGB = (bytes / (1024 * 1024 * 1024)).toFixed(2);
     } else if (name) {
         const upperName = name.toUpperCase();
-        
-        // Logica estesa di stima dimensioni
         if (upperName.includes("2160P") || upperName.includes("4K")) {
-            // Tra 20GB e 60GB per 4K
             sizeGB = (Math.random() * (60 - 20) + 20).toFixed(2);
         } else if (upperName.includes("1080P")) {
-            // Tra 6GB e 16GB per Full HD
             sizeGB = (Math.random() * (16 - 6) + 6).toFixed(2);
         } else if (upperName.includes("720P") || upperName.includes("SD") || upperName.includes("XVID") || upperName.includes("DVD")) {
-            // Non supera i 2GB per 720p, SD o Xvid (minimo 0.7GB per coerenza)
             sizeGB = (Math.random() * (2.0 - 0.7) + 0.7).toFixed(2);
         }
     }
@@ -142,7 +145,7 @@ window.manageWorkflow = function() {
 
 window.addNewTorrent = function(customName = null, triggerWorkflow = true, fixedSize = null) {
     let fullName = customName;
-    const existingNames = $('.file-name').map(function() { return $(this).text(); }).get();
+    const existingNames = $('.file-name').map(function() { return $(this).attr('title'); }).get();
 
     if (!fullName) {
         const availableDistros = distros.filter(d => !existingNames.some(existing => existing.startsWith(d.replace('.iso', ''))));
@@ -159,14 +162,17 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true, fixed
         extension = "";
     }
 
-    let finalDisplayName;
+    let finalFullName;
     if (window.historyCounters[baseName] === undefined) {
         window.historyCounters[baseName] = 0;
-        finalDisplayName = baseName + extension;
+        finalFullName = baseName + extension;
     } else {
         window.historyCounters[baseName]++;
-        finalDisplayName = `${baseName} (${window.historyCounters[baseName]})${extension}`;
+        finalFullName = `${baseName} (${window.historyCounters[baseName]})${extension}`;
     }
+
+    // Applichiamo l'accorciamento per la visualizzazione
+    const displayTitle = window.truncateName(finalFullName);
 
     const id = 'tr-' + Math.random().toString(36).substr(2, 7);
     const sizeGB = fixedSize ? fixedSize : (Math.random() * (window.CONFIG.MAX_SIZE_GB - window.CONFIG.MIN_SIZE_GB) + window.CONFIG.MIN_SIZE_GB).toFixed(2);
@@ -175,7 +181,7 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true, fixed
         <div class="torrent-item queued" id="${id}" data-base-name="${fullName}" data-size="${sizeGB}" data-current-speed="0" data-current-up-speed="0" data-downloaded-gb="0" data-sent-gb="0" data-remaining-sec="999999">
             <div class="file-info">
                 <div class="name-box">
-                    <span class="file-name">${finalDisplayName}</span>
+                    <span class="file-name" title="${finalFullName}">${displayTitle}</span>
                     <div class="move-controls">
                         <button onclick="window.moveTorrent(this, 'up')">▲</button>
                         <button onclick="window.moveTorrent(this, 'down')">▼</button>
