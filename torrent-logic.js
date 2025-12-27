@@ -54,9 +54,7 @@ window.processInput = function() {
         const lines = rawValue.split(/\r?\n/);
         lines.forEach(line => {
             const clean = line.trim();
-            if (clean) {
-                window.addNewTorrent(window.parseMagnetName(clean));
-            }
+            if (clean) window.addNewTorrent(window.parseMagnetName(clean));
         });
         window.toggleInputMode(); 
     } else {
@@ -80,13 +78,10 @@ window.moveTorrent = function(id, direction) {
 window.sortTorrents = function() {
     const container = $('#torrent-list');
     const items = container.children('.torrent-item').get();
-    
     const active = items.filter(i => $(i).hasClass('active-download'));
     const queued = items.filter(i => $(i).hasClass('queued'));
     const seeding = items.filter(i => $(i).hasClass('seeding'));
-
     active.sort((a, b) => (parseInt($(a).attr('data-remaining-sec')) || 0) - (parseInt($(b).attr('data-remaining-sec')) || 0));
-
     container.empty().append(active).append(queued).append(seeding);
 };
 
@@ -166,7 +161,6 @@ window.startAnimation = function(id) {
     
     const interval = setInterval(() => {
         if (!$item.length || $item.hasClass('seeding')) { clearInterval(interval); return; }
-        
         const activeCount = $('.active-download').length;
         const totalUpNodes = activeCount + $('.seeding').length;
         const currentSpeed = ((window.CONFIG.MAX_GLOBAL_DOWNLOAD_MBPS / activeCount) * (0.9 + Math.random() * 0.2)).toFixed(1);
@@ -188,16 +182,17 @@ window.startAnimation = function(id) {
             $item.removeClass('active-download').addClass('seeding').data('seeding-start', Date.now()).attr('data-remaining-sec', 999999);
             window.sortTorrents();
 
+            // Pulisce interfaccia per Seeding
             $item.find('.progress-bar').css('width', '100%');
             $item.find('.progress-text').text('100%');
-            $item.find('.desktop-label').text('Completato');
-            $item.find('.mobile-label').text('Fine');
+            $item.find('.desktop-label').text('Completato: ');
+            $item.find('.mobile-label').text('Fine: ');
             
             window.manageWorkflow();
             
             let seedSentMB = 0;
             const seedInt = setInterval(() => {
-                if (!$item.length) { 
+                if (!$item.length || !$item.hasClass('seeding')) { 
                     window.historicalSentGB = (parseFloat(window.historicalSentGB) || 0) + (seedSentMB / 1024);
                     clearInterval(seedInt); 
                     return; 
@@ -209,19 +204,15 @@ window.startAnimation = function(id) {
                 $item.attr('data-current-speed', sSpeed).attr('data-sent-gb', (seedSentMB / 1024).toFixed(4));
                 $item.find('.speed-info').text(sSpeed + ' MB/s');
                 
-                // CORREZIONE TIMER SEEDING:
-                const elapsedSeedSeconds = Math.floor((Date.now() - $item.data('seeding-start')) / 1000);
-                const remainingSeedSeconds = Math.max(0, (window.CONFIG.SEEDING_DURATION / 1000) - elapsedSeedSeconds);
+                const elapsedSeed = Math.floor((Date.now() - $item.data('seeding-start')) / 1000);
+                const remainingSeed = Math.max(0, (window.CONFIG.SEEDING_DURATION / 1000) - elapsedSeed);
                 
-                $item.find('.elapsed').text('Seed: ' + window.formatTime(elapsedSeedSeconds));
-                $item.find('.time-value').text(window.formatTime(remainingSeedSeconds));
+                $item.find('.elapsed').text('Seed: ' + window.formatTime(elapsedSeed));
+                $item.find('.time-value').text(window.formatTime(remainingSeed));
             }, window.CONFIG.UPDATE_INTERVAL);
             
             setTimeout(() => { 
-                $item.fadeOut(500, function() { 
-                    $(this).remove(); 
-                    window.manageWorkflow(); 
-                }); 
+                $item.fadeOut(500, function() { $(this).remove(); window.manageWorkflow(); }); 
             }, window.CONFIG.SEEDING_DURATION);
         } else {
             $item.find('.progress-bar').css('width', percent + '%');
@@ -229,7 +220,6 @@ window.startAnimation = function(id) {
             $item.find('.speed-info').text(currentSpeed + ' MB/s');
             $item.find('.elapsed').text('Passato: ' + window.formatTime(Math.floor((Date.now() - torrentStartTime) / 1000)));
             $item.find('.time-value').text(window.formatTime(remainingSec));
-            
             window.sortTorrents();
         }
     }, window.CONFIG.UPDATE_INTERVAL);
