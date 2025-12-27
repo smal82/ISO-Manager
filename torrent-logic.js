@@ -3,14 +3,6 @@ const distros = ["ubuntu-24.04.iso", "debian-12.iso", "fedora-40.iso", "arch-202
 window.historyCounters = {};
 window.isMultipleMode = false;
 
-// Funzione per accorciare il nome al centro
-window.truncateName = function(name, startChars = 25, endChars = 15) {
-    if (name.length <= (startChars + endChars + 3)) return name;
-    const start = name.substring(0, startChars);
-    const end = name.substring(name.length - endChars);
-    return `${start}...${end}`;
-};
-
 window.parseMagnetData = function(magnet) {
     if (!magnet || typeof magnet !== 'string') return null;
     
@@ -171,8 +163,10 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true, fixed
         finalFullName = `${baseName} (${window.historyCounters[baseName]})${extension}`;
     }
 
-    // Applichiamo l'accorciamento per la visualizzazione
-    const displayTitle = window.truncateName(finalFullName);
+    // Dividiamo il nome per il taglio dinamico CSS (ultimi 10 caratteri)
+    const splitIndex = Math.max(0, finalFullName.length - 10);
+    const part1 = finalFullName.substring(0, splitIndex);
+    const part2 = finalFullName.substring(splitIndex);
 
     const id = 'tr-' + Math.random().toString(36).substr(2, 7);
     const sizeGB = fixedSize ? fixedSize : (Math.random() * (window.CONFIG.MAX_SIZE_GB - window.CONFIG.MIN_SIZE_GB) + window.CONFIG.MIN_SIZE_GB).toFixed(2);
@@ -181,7 +175,10 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true, fixed
         <div class="torrent-item queued" id="${id}" data-base-name="${fullName}" data-size="${sizeGB}" data-current-speed="0" data-current-up-speed="0" data-downloaded-gb="0" data-sent-gb="0" data-remaining-sec="999999">
             <div class="file-info">
                 <div class="name-box">
-                    <span class="file-name" title="${finalFullName}">${displayTitle}</span>
+                    <div class="file-name" title="${finalFullName}">
+                        <span class="name-part-1">${part1}</span>
+                        <span class="name-part-2">${part2}</span>
+                    </div>
                     <div class="move-controls">
                         <button onclick="window.moveTorrent(this, 'up')">▲</button>
                         <button onclick="window.moveTorrent(this, 'down')">▼</button>
