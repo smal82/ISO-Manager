@@ -161,6 +161,7 @@ window.startAnimation = function(id) {
     
     const interval = setInterval(() => {
         if (!$item.length || $item.hasClass('seeding')) { clearInterval(interval); return; }
+        
         const activeCount = $('.active-download').length;
         const totalUpNodes = activeCount + $('.seeding').length;
         const currentSpeed = ((window.CONFIG.MAX_GLOBAL_DOWNLOAD_MBPS / activeCount) * (0.9 + Math.random() * 0.2)).toFixed(1);
@@ -171,7 +172,11 @@ window.startAnimation = function(id) {
         let percent = (downloadedMB / totalMB) * 100;
         const remainingSec = currentSpeed > 0 ? Math.round((totalMB - downloadedMB) / currentSpeed) : 0;
         
-        $item.attr('data-current-speed', currentSpeed).attr('data-current-up-speed', currentUpSpeed).attr('data-downloaded-gb', (downloadedMB / 1024).toFixed(4)).attr('data-sent-gb', (sentMB / 1024).toFixed(4)).attr('data-remaining-sec', remainingSec);
+        $item.attr('data-current-speed', currentSpeed)
+             .attr('data-current-up-speed', currentUpSpeed)
+             .attr('data-downloaded-gb', (downloadedMB / 1024).toFixed(4))
+             .attr('data-sent-gb', (sentMB / 1024).toFixed(4))
+             .attr('data-remaining-sec', remainingSec);
         
         if (percent >= 100) {
             clearInterval(interval);
@@ -179,10 +184,10 @@ window.startAnimation = function(id) {
             window.historicalDataGB = (parseFloat(window.historicalDataGB) || 0) + sizeGB;
             window.historicalSentGB = (parseFloat(window.historicalSentGB) || 0) + (sentMB / 1024);
             
-            $item.removeClass('active-download').addClass('seeding').data('seeding-start', Date.now()).attr('data-remaining-sec', 999999);
+            $item.removeClass('active-download').addClass('seeding');
+            $item.data('seeding-start', Date.now());
             window.sortTorrents();
 
-            // Pulisce interfaccia per Seeding
             $item.find('.progress-bar').css('width', '100%');
             $item.find('.progress-text').text('100%');
             $item.find('.desktop-label').text('Completato: ');
@@ -192,11 +197,12 @@ window.startAnimation = function(id) {
             
             let seedSentMB = 0;
             const seedInt = setInterval(() => {
-                if (!$item.length || !$item.hasClass('seeding')) { 
+                if (!$item.length) { 
                     window.historicalSentGB = (parseFloat(window.historicalSentGB) || 0) + (seedSentMB / 1024);
                     clearInterval(seedInt); 
                     return; 
                 }
+                
                 const currentTotalUpNodes = $('.seeding').length + $('.active-download').length;
                 const sSpeed = ((window.CONFIG.MAX_GLOBAL_UPLOAD_MBPS / currentTotalUpNodes) * (0.8 + Math.random() * 0.4)).toFixed(1);
                 seedSentMB += (sSpeed * (window.CONFIG.UPDATE_INTERVAL / 1000));
@@ -204,7 +210,8 @@ window.startAnimation = function(id) {
                 $item.attr('data-current-speed', sSpeed).attr('data-sent-gb', (seedSentMB / 1024).toFixed(4));
                 $item.find('.speed-info').text(sSpeed + ' MB/s');
                 
-                const elapsedSeed = Math.floor((Date.now() - $item.data('seeding-start')) / 1000);
+                const now = Date.now();
+                const elapsedSeed = Math.floor((now - $item.data('seeding-start')) / 1000);
                 const remainingSeed = Math.max(0, (window.CONFIG.SEEDING_DURATION / 1000) - elapsedSeed);
                 
                 $item.find('.elapsed').text('Seed: ' + window.formatTime(elapsedSeed));
