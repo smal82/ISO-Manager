@@ -2,6 +2,7 @@ const distros = ["ubuntu-24.04.iso", "debian-12.iso", "fedora-40.iso", "arch-202
 
 window.historyCounters = {};
 window.isMultipleMode = false;
+window.blacklistedDistros = []; // Lista per non reinserire distro eliminate
 
 window.parseMagnetData = function(magnet) {
     if (!magnet || typeof magnet !== 'string') return null;
@@ -86,6 +87,21 @@ window.processInput = function() {
     $('#magnet-field').val('');
 };
 
+window.removeTorrent = function(btn) {
+    const $item = $(btn).closest('.torrent-item');
+    const baseName = $item.attr('data-base-name');
+    
+    // Se è una distro predefinita, aggiungila alla blacklist per non farla più apparire
+    if (distros.includes(baseName)) {
+        window.blacklistedDistros.push(baseName);
+    }
+    
+    $item.fadeOut(300, function() {
+        $(this).remove();
+        window.manageWorkflow();
+    });
+};
+
 window.moveTorrent = function(btn, direction) {
     const $item = $(btn).closest('.torrent-item');
     if (direction === 'up') {
@@ -125,7 +141,10 @@ window.manageWorkflow = function() {
     if (!window.CONFIG.IS_CALIBRATED) return;
     const totalPresent = $('.torrent-item').length;
     if (totalPresent < window.CONFIG.FILL_LIMIT) {
-        for (let i = 0; i < (window.CONFIG.FILL_LIMIT - totalPresent); i++) { window.addNewTorrent(null, false); }
+        // Calcola quanti slot riempire, escludendo quelli eliminati manualmente
+        for (let i = 0; i < (window.CONFIG.FILL_LIMIT - totalPresent); i++) { 
+            window.addNewTorrent(null, false); 
+        }
     }
     const activeCount = $('.active-download').length;
     if (activeCount < window.CONFIG.MAX_ACTIVE) {
@@ -140,8 +159,18 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true, fixed
     const existingNames = $('.file-name').map(function() { return $(this).attr('title'); }).get();
 
     if (!fullName) {
-        const availableDistros = distros.filter(d => !existingNames.some(existing => existing.startsWith(d.replace('.iso', ''))));
-        fullName = availableDistros.length > 0 ? availableDistros[Math.floor(Math.random() * availableDistros.length)] : "iso-" + Math.random().toString(36).substr(2, 5).toUpperCase() + ".iso";
+        // Filtra distro escludendo quelle già presenti E quelle rimosse manualmente (blacklist)
+        const availableDistros = distros.filter(d => 
+            !existingNames.some(existing => existing.startsWith(d.replace('.iso', ''))) && 
+            !window.blacklistedDistros.includes(d)
+        );
+        
+        if (availableDistros.length > 0) {
+            fullName = availableDistros[Math.floor(Math.random() * availableDistros.length)];
+        } else {
+            // Se finiamo le distro e non ci sono magnet custom, generiamo un file generico
+            fullName = "extra-data-" + Math.random().toString(36).substr(2, 5).toUpperCase() + ".dat";
+        }
     }
 
     let baseName, extension;
@@ -163,7 +192,6 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true, fixed
         finalFullName = `${baseName} (${window.historyCounters[baseName]})${extension}`;
     }
 
-    // Dividiamo il nome per il taglio dinamico CSS (ultimi 10 caratteri)
     const splitIndex = Math.max(0, finalFullName.length - 10);
     const part1 = finalFullName.substring(0, splitIndex);
     const part2 = finalFullName.substring(splitIndex);
@@ -180,8 +208,9 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true, fixed
                         <span class="name-part-2">${part2}</span>
                     </div>
                     <div class="move-controls">
-                        <button onclick="window.moveTorrent(this, 'up')">▲</button>
-                        <button onclick="window.moveTorrent(this, 'down')">▼</button>
+                        <button class="btn-up" onclick="window.moveTorrent(this, 'up')">▲</button>
+                        <button class="btn-down" onclick="window.moveTorrent(this, 'down')">▼</button>
+                        <button class="btn-remove" onclick="window.removeTorrent(this)">✕</button>
                     </div>
                 </div>
                 <span class="file-size">${sizeGB} GB</span>
