@@ -56,15 +56,15 @@ window.processInput = function() {
             const clean = line.trim();
             if (clean) window.addNewTorrent(window.parseMagnetName(clean));
         });
-        window.toggleInputMode(); 
     } else {
         window.addNewTorrent(window.parseMagnetName(rawValue));
     }
-    $('#magnet-field').val('');
+    field.val('');
 };
 
-window.moveTorrent = function(id, direction) {
-    const $item = $('#' + id);
+// Nuovo sistema di spostamento manuale
+window.moveTorrent = function(btn, direction) {
+    const $item = $(btn).closest('.torrent-item');
     if (direction === 'up') {
         const $prev = $item.prev('.torrent-item.queued');
         if ($prev.length) $item.insertBefore($prev);
@@ -72,17 +72,33 @@ window.moveTorrent = function(id, direction) {
         const $next = $item.next('.torrent-item.queued');
         if ($next.length) $item.insertAfter($next);
     }
-    window.manageWorkflow(); 
+    // Dopo lo spostamento manuale, verifichiamo il workflow senza forzare il riordino totale
+    const activeCount = $('.active-download').length;
+    if (activeCount < window.CONFIG.MAX_ACTIVE) {
+        $('.torrent-item.queued').slice(0, window.CONFIG.MAX_ACTIVE - activeCount).each(function() { window.startAnimation($(this).attr('id')); });
+    }
 };
 
 window.sortTorrents = function() {
     const container = $('#torrent-list');
     const items = container.children('.torrent-item').get();
-    const active = items.filter(i => $(i).hasClass('active-download'));
-    const queued = items.filter(i => $(i).hasClass('queued'));
-    const seeding = items.filter(i => $(i).hasClass('seeding'));
-    active.sort((a, b) => (parseInt($(a).attr('data-remaining-sec')) || 0) - (parseInt($(b).attr('data-remaining-sec')) || 0));
-    container.empty().append(active).append(queued).append(seeding);
+    
+    items.sort(function(a, b) {
+        const order = { 'active-download': 1, 'queued': 2, 'seeding': 3 };
+        const classA = $(a).hasClass('active-download') ? 'active-download' : ($(a).hasClass('seeding') ? 'seeding' : 'queued');
+        const classB = $(b).hasClass('active-download') ? 'active-download' : ($(b).hasClass('seeding') ? 'seeding' : 'queued');
+        
+        if (order[classA] !== order[classB]) return order[classA] - order[classB];
+
+        if (classA === 'active-download') {
+            const remA = parseInt($(a).attr('data-remaining-sec')) || 0;
+            const remB = parseInt($(b).attr('data-remaining-sec')) || 0;
+            return remA - remB;
+        }
+        return 0; // Mantieni l'ordine per le altre categorie
+    });
+    
+    $.each(items, function(i, li) { container.append(li); });
 };
 
 window.manageWorkflow = function() {
@@ -101,24 +117,27 @@ window.manageWorkflow = function() {
 
 window.addNewTorrent = function(customName = null, triggerWorkflow = true) {
     let name = customName;
-    const existingNames = $('.file-name').map(function() { return $(this).text(); }).get();
-
-    let baseToUse = name ? name.replace('.iso', '') : null;
-    if (!baseToUse) {
+    if (!name) {
+        const existingNames = $('.file-name').map(function() { return $(this).text(); }).get();
         const availableDistros = distros.filter(d => {
             const cleanD = d.replace('.iso', '');
             return !existingNames.some(existing => existing.startsWith(cleanD));
         });
-        const selected = availableDistros.length > 0 ? availableDistros[Math.floor(Math.random() * availableDistros.length)] : "iso-" + Math.random().toString(36).substr(2, 5).toUpperCase() + ".iso";
-        baseToUse = selected.replace('.iso', '');
-    }
 
-    if (window.historyCounters[baseToUse] === undefined) {
-        window.historyCounters[baseToUse] = 0;
-        name = baseToUse + ".iso";
-    } else {
-        window.historyCounters[baseToUse]++;
-        name = `${baseToUse} (${window.historyCounters[baseToUse]}).iso`;
+        if (availableDistros.length > 0) {
+            const baseName = availableDistros[Math.floor(Math.random() * availableDistros.length)];
+            const cleanBase = baseName.replace('.iso', '');
+            
+            if (window.historyCounters[cleanBase] === undefined) {
+                window.historyCounters[cleanBase] = 0; 
+                name = baseName;
+            } else {
+                window.historyCounters[cleanBase]++;
+                name = `${cleanBase} (${window.historyCounters[cleanBase]}).iso`;
+            }
+        } else {
+            name = "iso-" + Math.random().toString(36).substr(2, 5).toUpperCase() + ".iso";
+        }
     }
 
     const id = 'tr-' + Math.random().toString(36).substr(2, 7);
@@ -127,11 +146,11 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true) {
     const html = `
         <div class="torrent-item queued" id="${id}" data-size="${sizeGB}" data-current-speed="0" data-current-up-speed="0" data-downloaded-gb="0" data-sent-gb="0" data-remaining-sec="999999">
             <div class="file-info">
-                <div class="name-container">
+                <div class="name-box">
                     <span class="file-name">${name}</span>
-                    <div class="controls">
-                        <button class="move-btn" onclick="window.moveTorrent('${id}', 'up')">▲</button>
-                        <button class="move-btn" onclick="window.moveTorrent('${id}', 'down')">▼</button>
+                    <div class="move-controls">
+                        <button onclick="window.moveTorrent(this, 'up')">▲</button>
+                        <button onclick="window.moveTorrent(this, 'down')">▼</button>
                     </div>
                 </div>
                 <span class="file-size">${sizeGB} GB</span>
@@ -185,24 +204,25 @@ window.startAnimation = function(id) {
             window.historicalSentGB = (parseFloat(window.historicalSentGB) || 0) + (sentMB / 1024);
             
             $item.removeClass('active-download').addClass('seeding');
-            $item.data('seeding-start', Date.now());
-            window.sortTorrents();
-
+            $item.attr('data-remaining-sec', 999999);
+            const seedingStartTime = Date.now();
+            
             $item.find('.progress-bar').css('width', '100%');
             $item.find('.progress-text').text('100%');
-            $item.find('.desktop-label').text('Completato: ');
-            $item.find('.mobile-label').text('Fine: ');
+            $item.find('.desktop-label').text('Completato');
+            $item.find('.mobile-label').text('Fine');
+            $item.find('.time-value').text(''); // Pulisce il timer download
             
+            window.sortTorrents();
             window.manageWorkflow();
             
             let seedSentMB = 0;
             const seedInt = setInterval(() => {
-                if (!$item.length) { 
+                if (!$item.length || !$item.hasClass('seeding')) { 
                     window.historicalSentGB = (parseFloat(window.historicalSentGB) || 0) + (seedSentMB / 1024);
                     clearInterval(seedInt); 
                     return; 
                 }
-                
                 const currentTotalUpNodes = $('.seeding').length + $('.active-download').length;
                 const sSpeed = ((window.CONFIG.MAX_GLOBAL_UPLOAD_MBPS / currentTotalUpNodes) * (0.8 + Math.random() * 0.4)).toFixed(1);
                 seedSentMB += (sSpeed * (window.CONFIG.UPDATE_INTERVAL / 1000));
@@ -210,12 +230,9 @@ window.startAnimation = function(id) {
                 $item.attr('data-current-speed', sSpeed).attr('data-sent-gb', (seedSentMB / 1024).toFixed(4));
                 $item.find('.speed-info').text(sSpeed + ' MB/s');
                 
-                const now = Date.now();
-                const elapsedSeed = Math.floor((now - $item.data('seeding-start')) / 1000);
-                const remainingSeed = Math.max(0, (window.CONFIG.SEEDING_DURATION / 1000) - elapsedSeed);
-                
-                $item.find('.elapsed').text('Seed: ' + window.formatTime(elapsedSeed));
-                $item.find('.time-value').text(window.formatTime(remainingSeed));
+                // Aggiornamento Timer Seeding
+                const elapsedSeedSeconds = Math.floor((Date.now() - seedingStartTime) / 1000);
+                $item.find('.elapsed').text('Seed: ' + window.formatTime(elapsedSeedSeconds));
             }, window.CONFIG.UPDATE_INTERVAL);
             
             setTimeout(() => { 
@@ -227,7 +244,7 @@ window.startAnimation = function(id) {
             $item.find('.speed-info').text(currentSpeed + ' MB/s');
             $item.find('.elapsed').text('Passato: ' + window.formatTime(Math.floor((Date.now() - torrentStartTime) / 1000)));
             $item.find('.time-value').text(window.formatTime(remainingSec));
-            window.sortTorrents();
+            if (Math.random() > 0.98) window.sortTorrents();
         }
     }, window.CONFIG.UPDATE_INTERVAL);
 };
