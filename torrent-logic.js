@@ -56,13 +56,14 @@ window.processInput = function() {
             const clean = line.trim();
             if (clean) window.addNewTorrent(window.parseMagnetName(clean));
         });
+        // Ritorna automaticamente alla modalità singola dopo l'invio multiplo
+        window.toggleInputMode();
     } else {
         window.addNewTorrent(window.parseMagnetName(rawValue));
     }
-    field.val('');
+    $('#magnet-field').val('');
 };
 
-// Nuovo sistema di spostamento manuale
 window.moveTorrent = function(btn, direction) {
     const $item = $(btn).closest('.torrent-item');
     if (direction === 'up') {
@@ -72,7 +73,6 @@ window.moveTorrent = function(btn, direction) {
         const $next = $item.next('.torrent-item.queued');
         if ($next.length) $item.insertAfter($next);
     }
-    // Dopo lo spostamento manuale, verifichiamo il workflow senza forzare il riordino totale
     const activeCount = $('.active-download').length;
     if (activeCount < window.CONFIG.MAX_ACTIVE) {
         $('.torrent-item.queued').slice(0, window.CONFIG.MAX_ACTIVE - activeCount).each(function() { window.startAnimation($(this).attr('id')); });
@@ -89,15 +89,13 @@ window.sortTorrents = function() {
         const classB = $(b).hasClass('active-download') ? 'active-download' : ($(b).hasClass('seeding') ? 'seeding' : 'queued');
         
         if (order[classA] !== order[classB]) return order[classA] - order[classB];
-
         if (classA === 'active-download') {
             const remA = parseInt($(a).attr('data-remaining-sec')) || 0;
             const remB = parseInt($(b).attr('data-remaining-sec')) || 0;
             return remA - remB;
         }
-        return 0; // Mantieni l'ordine per le altre categorie
+        return 0;
     });
-    
     $.each(items, function(i, li) { container.append(li); });
 };
 
@@ -117,34 +115,36 @@ window.manageWorkflow = function() {
 
 window.addNewTorrent = function(customName = null, triggerWorkflow = true) {
     let name = customName;
-    if (!name) {
-        const existingNames = $('.file-name').map(function() { return $(this).text(); }).get();
-        const availableDistros = distros.filter(d => {
-            const cleanD = d.replace('.iso', '');
-            return !existingNames.some(existing => existing.startsWith(cleanD));
-        });
+    const existingNames = $('.file-name').map(function() { return $(this).text(); }).get();
 
-        if (availableDistros.length > 0) {
-            const baseName = availableDistros[Math.floor(Math.random() * availableDistros.length)];
-            const cleanBase = baseName.replace('.iso', '');
-            
-            if (window.historyCounters[cleanBase] === undefined) {
-                window.historyCounters[cleanBase] = 0; 
-                name = baseName;
-            } else {
-                window.historyCounters[cleanBase]++;
-                name = `${cleanBase} (${window.historyCounters[cleanBase]}).iso`;
-            }
-        } else {
-            name = "iso-" + Math.random().toString(36).substr(2, 5).toUpperCase() + ".iso";
-        }
+    let cleanBase;
+    if (name) {
+        // Se è un nome personalizzato (es. magnet), puliamo l'estensione se presente
+        cleanBase = name.replace('.iso', '');
+    } else {
+        // Se è un riempimento automatico, scegliamo una distro non presente
+        const availableDistros = distros.filter(d => {
+            const dName = d.replace('.iso', '');
+            return !existingNames.some(existing => existing.startsWith(dName));
+        });
+        const selected = availableDistros.length > 0 ? availableDistros[Math.floor(Math.random() * availableDistros.length)] : "iso-" + Math.random().toString(36).substr(2, 5).toUpperCase() + ".iso";
+        cleanBase = selected.replace('.iso', '');
+    }
+
+    // Logica numerazione (1), (2) persistente nel historyCounters
+    if (window.historyCounters[cleanBase] === undefined) {
+        window.historyCounters[cleanBase] = 0;
+        name = cleanBase + ".iso";
+    } else {
+        window.historyCounters[cleanBase]++;
+        name = `${cleanBase} (${window.historyCounters[cleanBase]}).iso`;
     }
 
     const id = 'tr-' + Math.random().toString(36).substr(2, 7);
     const sizeGB = (Math.random() * (window.CONFIG.MAX_SIZE_GB - window.CONFIG.MIN_SIZE_GB) + window.CONFIG.MIN_SIZE_GB).toFixed(2);
     
     const html = `
-        <div class="torrent-item queued" id="${id}" data-size="${sizeGB}" data-current-speed="0" data-current-up-speed="0" data-downloaded-gb="0" data-sent-gb="0" data-remaining-sec="999999">
+        <div class="torrent-item queued" id="${id}" data-base-name="${cleanBase}" data-size="${sizeGB}" data-current-speed="0" data-current-up-speed="0" data-downloaded-gb="0" data-sent-gb="0" data-remaining-sec="999999">
             <div class="file-info">
                 <div class="name-box">
                     <span class="file-name">${name}</span>
@@ -204,14 +204,14 @@ window.startAnimation = function(id) {
             window.historicalSentGB = (parseFloat(window.historicalSentGB) || 0) + (sentMB / 1024);
             
             $item.removeClass('active-download').addClass('seeding');
-            $item.attr('data-remaining-sec', 999999);
             const seedingStartTime = Date.now();
+            const originalBaseName = $item.attr('data-base-name'); // Recuperiamo il nome originale salvato
             
             $item.find('.progress-bar').css('width', '100%');
             $item.find('.progress-text').text('100%');
             $item.find('.desktop-label').text('Completato');
             $item.find('.mobile-label').text('Fine');
-            $item.find('.time-value').text(''); // Pulisce il timer download
+            $item.find('.time-value').text('');
             
             window.sortTorrents();
             window.manageWorkflow();
@@ -227,16 +227,18 @@ window.startAnimation = function(id) {
                 const sSpeed = ((window.CONFIG.MAX_GLOBAL_UPLOAD_MBPS / currentTotalUpNodes) * (0.8 + Math.random() * 0.4)).toFixed(1);
                 seedSentMB += (sSpeed * (window.CONFIG.UPDATE_INTERVAL / 1000));
                 
-                $item.attr('data-current-speed', sSpeed).attr('data-sent-gb', (seedSentMB / 1024).toFixed(4));
                 $item.find('.speed-info').text(sSpeed + ' MB/s');
-                
-                // Aggiornamento Timer Seeding
-                const elapsedSeedSeconds = Math.floor((Date.now() - seedingStartTime) / 1000);
-                $item.find('.elapsed').text('Seed: ' + window.formatTime(elapsedSeedSeconds));
+                $item.find('.elapsed').text('Seed: ' + window.formatTime(Math.floor((Date.now() - seedingStartTime) / 1000)));
             }, window.CONFIG.UPDATE_INTERVAL);
             
+            // Alla fine del seeding, reinseriamo il file invece di eliminarlo semplicemente
             setTimeout(() => { 
-                $item.fadeOut(500, function() { $(this).remove(); window.manageWorkflow(); }); 
+                $item.fadeOut(500, function() { 
+                    $(this).remove(); 
+                    // Reinserimento con il nome base originale per far scattare la numerazione (1), (2), etc.
+                    window.addNewTorrent(originalBaseName);
+                    window.manageWorkflow(); 
+                }); 
             }, window.CONFIG.SEEDING_DURATION);
         } else {
             $item.find('.progress-bar').css('width', percent + '%');
