@@ -2,7 +2,7 @@ const distros = ["ubuntu-24.04.iso", "debian-12.iso", "fedora-40.iso", "arch-202
 
 window.historyCounters = {};
 window.isMultipleMode = false;
-window.blacklistedDistros = []; // Lista per non reinserire distro eliminate
+window.blacklistedDistros = []; 
 
 window.parseMagnetData = function(magnet) {
     if (!magnet || typeof magnet !== 'string') return null;
@@ -91,14 +91,18 @@ window.removeTorrent = function(btn) {
     const $item = $(btn).closest('.torrent-item');
     const baseName = $item.attr('data-base-name');
     
-    // Se è una distro predefinita, aggiungila alla blacklist per non farla più apparire
     if (distros.includes(baseName)) {
         window.blacklistedDistros.push(baseName);
     }
     
     $item.fadeOut(300, function() {
         $(this).remove();
-        window.manageWorkflow();
+        // Aggiorniamo solo lo stato delle code, senza aggiungere nuovi file
+        window.updateStats();
+        const activeCount = $('.active-download').length;
+        if (activeCount < window.CONFIG.MAX_ACTIVE) {
+            $('.torrent-item.queued').slice(0, window.CONFIG.MAX_ACTIVE - activeCount).each(function() { window.startAnimation($(this).attr('id')); });
+        }
     });
 };
 
@@ -139,13 +143,9 @@ window.sortTorrents = function() {
 
 window.manageWorkflow = function() {
     if (!window.CONFIG.IS_CALIBRATED) return;
-    const totalPresent = $('.torrent-item').length;
-    if (totalPresent < window.CONFIG.FILL_LIMIT) {
-        // Calcola quanti slot riempire, escludendo quelli eliminati manualmente
-        for (let i = 0; i < (window.CONFIG.FILL_LIMIT - totalPresent); i++) { 
-            window.addNewTorrent(null, false); 
-        }
-    }
+    
+    // Rimosso il loop di riempimento automatico FILL_LIMIT per rispettare la rimozione manuale
+    
     const activeCount = $('.active-download').length;
     if (activeCount < window.CONFIG.MAX_ACTIVE) {
         $('.torrent-item.queued').slice(0, window.CONFIG.MAX_ACTIVE - activeCount).each(function() { window.startAnimation($(this).attr('id')); });
@@ -159,7 +159,6 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true, fixed
     const existingNames = $('.file-name').map(function() { return $(this).attr('title'); }).get();
 
     if (!fullName) {
-        // Filtra distro escludendo quelle già presenti E quelle rimosse manualmente (blacklist)
         const availableDistros = distros.filter(d => 
             !existingNames.some(existing => existing.startsWith(d.replace('.iso', ''))) && 
             !window.blacklistedDistros.includes(d)
@@ -168,8 +167,7 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true, fixed
         if (availableDistros.length > 0) {
             fullName = availableDistros[Math.floor(Math.random() * availableDistros.length)];
         } else {
-            // Se finiamo le distro e non ci sono magnet custom, generiamo un file generico
-            fullName = "extra-data-" + Math.random().toString(36).substr(2, 5).toUpperCase() + ".dat";
+            return; // Non aggiungere nulla se non ci sono distro disponibili
         }
     }
 
