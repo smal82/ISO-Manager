@@ -97,8 +97,9 @@ window.removeTorrent = function(btn) {
     
     $item.fadeOut(300, function() {
         $(this).remove();
-        // Aggiorniamo solo lo stato delle code, senza aggiungere nuovi file
         window.updateStats();
+        // Fai partire un nuovo download se si è liberato un posto, 
+        // ma NON aggiungere nuovi torrent alla lista totale.
         const activeCount = $('.active-download').length;
         if (activeCount < window.CONFIG.MAX_ACTIVE) {
             $('.torrent-item.queued').slice(0, window.CONFIG.MAX_ACTIVE - activeCount).each(function() { window.startAnimation($(this).attr('id')); });
@@ -144,7 +145,13 @@ window.sortTorrents = function() {
 window.manageWorkflow = function() {
     if (!window.CONFIG.IS_CALIBRATED) return;
     
-    // Rimosso il loop di riempimento automatico FILL_LIMIT per rispettare la rimozione manuale
+    // Solo all'avvio: se la lista è vuota, riempi fino a FILL_LIMIT
+    const totalPresent = $('.torrent-item').length;
+    if (totalPresent === 0 && window.blacklistedDistros.length === 0) {
+        for (let i = 0; i < window.CONFIG.FILL_LIMIT; i++) {
+            window.addNewTorrent(null, false);
+        }
+    }
     
     const activeCount = $('.active-download').length;
     if (activeCount < window.CONFIG.MAX_ACTIVE) {
@@ -167,7 +174,7 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true, fixed
         if (availableDistros.length > 0) {
             fullName = availableDistros[Math.floor(Math.random() * availableDistros.length)];
         } else {
-            return; // Non aggiungere nulla se non ci sono distro disponibili
+            return; 
         }
     }
 
