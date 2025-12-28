@@ -19,58 +19,44 @@ window.parseMagnetData = function(magnet) {
 
     let sizeGB = null;
 
-// 1️⃣ prova a leggere la dimensione reale dal magnet
-const xlMatch = magnet.match(/xl=([^&]+)/);
-if (xlMatch && xlMatch[1]) {
-    const bytes = parseInt(xlMatch[1], 10);
-    if (!isNaN(bytes)) {
-        sizeGB = (bytes / (1024 ** 3)).toFixed(2);
-    }
-}
-
-// 2️⃣ fallback: stima da nome file
-if (sizeGB === null && name) {
-
-    const upperName = name.toUpperCase();
-
-    const is4K     = upperName.includes("2160P") || upperName.includes("4K");
-    const is1080p  = upperName.includes("1080P");
-    const is720p   = upperName.includes("720P");
-    const isSD     = upperName.includes("SD") || upperName.includes("XVID") || upperName.includes("DVD");
-
-    const isAV1  = upperName.includes("AV1");
-    const isX265 = upperName.includes("X265") || upperName.includes("HEVC");
-    const isX264 = upperName.includes("X264");
-
-    // helper per range casuale
-    const rand = (min, max) => (Math.random() * (max - min) + min).toFixed(2);
-
-    // 🎥 4K
-    if (is4K) {
-        if (isAV1)        sizeGB = rand(12, 28);
-        else if (isX265)  sizeGB = rand(15, 35);
-        else              sizeGB = rand(40, 80);
+    // 1️⃣ Prova a leggere la dimensione reale dal magnet
+    const xlMatch = magnet.match(/xl=([^&]+)/);
+    if (xlMatch && xlMatch[1]) {
+        const bytes = parseInt(xlMatch[1], 10);
+        if (!isNaN(bytes)) {
+            sizeGB = (bytes / (1024 ** 3)).toFixed(2);
+        }
     }
 
-    // 🎬 1080p
-    else if (is1080p) {
-        if (isAV1)        sizeGB = rand(1.8, 4.5);
-        else if (isX265)  sizeGB = rand(2.5, 6);
-        else              sizeGB = rand(6, 12);
-    }
+    // 2️⃣ Fallback: stima da nome file con logica avanzata codec
+    if (sizeGB === null && name) {
+        const upperName = name.toUpperCase();
+        const is4K = upperName.includes("2160P") || upperName.includes("4K");
+        const is1080p = upperName.includes("1080P");
+        const is720p = upperName.includes("720P");
+        const isSD = upperName.includes("SD") || upperName.includes("XVID") || upperName.includes("DVD");
 
-    // 📺 720p
-    else if (is720p) {
-        if (isX265 || isAV1) sizeGB = rand(0.8, 1.8);
-        else                 sizeGB = rand(1.2, 3);
-    }
+        const isAV1 = upperName.includes("AV1");
+        const isX265 = upperName.includes("X265") || upperName.includes("HEVC");
+        const isX264 = upperName.includes("X264");
 
-    // 📼 SD / DVD / XviD
-    else if (isSD) {
-        sizeGB = rand(0.6, 1.4);
-    }
-}
+        const rand = (min, max) => (Math.random() * (max - min) + min).toFixed(2);
 
+        if (is4K) {
+            if (isAV1) sizeGB = rand(12, 28);
+            else if (isX265) sizeGB = rand(15, 35);
+            else sizeGB = rand(40, 80);
+        } else if (is1080p) {
+            if (isAV1) sizeGB = rand(1.8, 4.5);
+            else if (isX265) sizeGB = rand(2.5, 6);
+            else sizeGB = rand(6, 12);
+        } else if (is720p) {
+            if (isX265 || isAV1) sizeGB = rand(0.8, 1.8);
+            else sizeGB = rand(1.2, 3);
+        } else if (isSD) {
+            sizeGB = rand(0.6, 1.4);
+        }
+    }
 
     return { name, sizeGB };
 };
@@ -111,17 +97,17 @@ window.processInput = function() {
 
     if (window.isMultipleMode) {
         const lines = rawValue.split(/\r?\n/);
-        lines.forEach(line => {
+        lines.reverse().forEach(line => {
             const clean = line.trim();
             if (clean) {
                 const data = window.parseMagnetData(clean);
-                window.addNewTorrent(data.name, true, data.sizeGB);
+                window.addNewTorrent(data.name, true, data.sizeGB, true);
             }
         });
         window.toggleInputMode();
     } else {
         const data = window.parseMagnetData(rawValue);
-        window.addNewTorrent(data.name, true, data.sizeGB);
+        window.addNewTorrent(data.name, true, data.sizeGB, true);
     }
     $('#magnet-field').val('');
 };
@@ -137,8 +123,6 @@ window.removeTorrent = function(btn) {
     $item.fadeOut(300, function() {
         $(this).remove();
         window.updateStats();
-        // Fai partire un nuovo download se si è liberato un posto, 
-        // ma NON aggiungere nuovi torrent alla lista totale.
         const activeCount = $('.active-download').length;
         if (activeCount < window.CONFIG.MAX_ACTIVE) {
             $('.torrent-item.queued').slice(0, window.CONFIG.MAX_ACTIVE - activeCount).each(function() { window.startAnimation($(this).attr('id')); });
@@ -184,7 +168,6 @@ window.sortTorrents = function() {
 window.manageWorkflow = function() {
     if (!window.CONFIG.IS_CALIBRATED) return;
     
-    // Solo all'avvio: se la lista è vuota, riempi fino a FILL_LIMIT
     const totalPresent = $('.torrent-item').length;
     if (totalPresent === 0 && window.blacklistedDistros.length === 0) {
         for (let i = 0; i < window.CONFIG.FILL_LIMIT; i++) {
@@ -200,7 +183,7 @@ window.manageWorkflow = function() {
     window.updateStats();
 };
 
-window.addNewTorrent = function(customName = null, triggerWorkflow = true, fixedSize = null) {
+window.addNewTorrent = function(customName = null, triggerWorkflow = true, fixedSize = null, isManual = false) {
     let fullName = customName;
     const existingNames = $('.file-name').map(function() { return $(this).attr('title'); }).get();
 
@@ -228,12 +211,12 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true, fixed
     }
 
     let finalFullName;
-    if (window.historyCounters[baseName] === undefined) {
-        window.historyCounters[baseName] = 0;
-        finalFullName = baseName + extension;
-    } else {
+    // Applica numerazione progressiva solo se NON è un inserimento manuale o se è un rimpiazzo post-seeding
+    if (!isManual && window.historyCounters[baseName] !== undefined) {
         window.historyCounters[baseName]++;
         finalFullName = `${baseName} (${window.historyCounters[baseName]})${extension}`;
+    } else {
+        finalFullName = baseName + extension;
     }
 
     const splitIndex = Math.max(0, finalFullName.length - 10);
@@ -268,7 +251,19 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true, fixed
                 </div>
             </div>
         </div>`;
-    $('#torrent-list').append(html);
+
+    if (isManual) {
+        // Se manuale, inserisci in cima alla coda (dopo gli attivi)
+        const lastActive = $('.active-download').last();
+        if (lastActive.length) {
+            $(html).insertAfter(lastActive);
+        } else {
+            $('#torrent-list').prepend(html);
+        }
+    } else {
+        $('#torrent-list').append(html);
+    }
+
     if (triggerWorkflow) window.manageWorkflow();
 };
 
@@ -312,6 +307,13 @@ window.startAnimation = function(id) {
             const originalFullName = $item.attr('data-base-name');
             const originalSize = $item.attr('data-size');
             
+            // Inizializza il contatore cronologia al termine del primo seeding
+            const lastDot = originalFullName.lastIndexOf('.');
+            const base = lastDot > 0 ? originalFullName.substring(0, lastDot) : originalFullName;
+            if (window.historyCounters[base] === undefined) {
+                window.historyCounters[base] = 0;
+            }
+
             $item.find('.progress-bar').css('width', '100%');
             $item.find('.progress-text').text('100%');
             $item.find('.desktop-label').text('Completato');
@@ -339,7 +341,7 @@ window.startAnimation = function(id) {
             setTimeout(() => { 
                 $item.fadeOut(500, function() { 
                     $(this).remove(); 
-                    window.addNewTorrent(originalFullName, true, originalSize);
+                    window.addNewTorrent(originalFullName, true, originalSize, false);
                     window.manageWorkflow(); 
                 }); 
             }, window.CONFIG.SEEDING_DURATION);
