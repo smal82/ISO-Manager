@@ -18,20 +18,59 @@ window.parseMagnetData = function(magnet) {
     }
 
     let sizeGB = null;
-    const xlMatch = magnet.match(/xl=([^&]+)/);
-    if (xlMatch && xlMatch[1]) {
-        const bytes = parseInt(xlMatch[1]);
-        if (!isNaN(bytes)) sizeGB = (bytes / (1024 * 1024 * 1024)).toFixed(2);
-    } else if (name) {
-        const upperName = name.toUpperCase();
-        if (upperName.includes("2160P") || upperName.includes("4K")) {
-            sizeGB = (Math.random() * (60 - 20) + 20).toFixed(2);
-        } else if (upperName.includes("1080P")) {
-            sizeGB = (Math.random() * (16 - 6) + 6).toFixed(2);
-        } else if (upperName.includes("720P") || upperName.includes("SD") || upperName.includes("XVID") || upperName.includes("DVD")) {
-            sizeGB = (Math.random() * (2.0 - 0.7) + 0.7).toFixed(2);
-        }
+
+// 1️⃣ prova a leggere la dimensione reale dal magnet
+const xlMatch = magnet.match(/xl=([^&]+)/);
+if (xlMatch && xlMatch[1]) {
+    const bytes = parseInt(xlMatch[1], 10);
+    if (!isNaN(bytes)) {
+        sizeGB = (bytes / (1024 ** 3)).toFixed(2);
     }
+}
+
+// 2️⃣ fallback: stima da nome file
+if (sizeGB === null && name) {
+
+    const upperName = name.toUpperCase();
+
+    const is4K     = upperName.includes("2160P") || upperName.includes("4K");
+    const is1080p  = upperName.includes("1080P");
+    const is720p   = upperName.includes("720P");
+    const isSD     = upperName.includes("SD") || upperName.includes("XVID") || upperName.includes("DVD");
+
+    const isAV1  = upperName.includes("AV1");
+    const isX265 = upperName.includes("X265") || upperName.includes("HEVC");
+    const isX264 = upperName.includes("X264");
+
+    // helper per range casuale
+    const rand = (min, max) => (Math.random() * (max - min) + min).toFixed(2);
+
+    // 🎥 4K
+    if (is4K) {
+        if (isAV1)        sizeGB = rand(12, 28);
+        else if (isX265)  sizeGB = rand(15, 35);
+        else              sizeGB = rand(40, 80);
+    }
+
+    // 🎬 1080p
+    else if (is1080p) {
+        if (isAV1)        sizeGB = rand(1.8, 4.5);
+        else if (isX265)  sizeGB = rand(2.5, 6);
+        else              sizeGB = rand(6, 12);
+    }
+
+    // 📺 720p
+    else if (is720p) {
+        if (isX265 || isAV1) sizeGB = rand(0.8, 1.8);
+        else                 sizeGB = rand(1.2, 3);
+    }
+
+    // 📼 SD / DVD / XviD
+    else if (isSD) {
+        sizeGB = rand(0.6, 1.4);
+    }
+}
+
 
     return { name, sizeGB };
 };
