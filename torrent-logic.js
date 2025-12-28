@@ -28,7 +28,7 @@ window.parseMagnetData = function(magnet) {
         }
     }
 
-    // 2️⃣ Fallback: stima da nome file con logica avanzata codec
+    // 2️⃣ Fallback: stima da nome file con logica avanzata
     if (sizeGB === null && name) {
         const upperName = name.toUpperCase();
         const is4K = upperName.includes("2160P") || upperName.includes("4K");
@@ -54,7 +54,12 @@ window.parseMagnetData = function(magnet) {
             if (isX265 || isAV1) sizeGB = rand(0.8, 1.8);
             else sizeGB = rand(1.2, 3);
         } else if (isSD) {
-            sizeGB = rand(0.6, 1.4);
+            // Raffinamento per DVDRip pesanti (MKV, AC3, 5.1)
+            if (upperName.includes("MKV") || upperName.includes("AC3") || upperName.includes("5.1")) {
+                sizeGB = rand(1.4, 2.2);
+            } else {
+                sizeGB = rand(0.6, 1.4);
+            }
         }
     }
 
@@ -97,6 +102,7 @@ window.processInput = function() {
 
     if (window.isMultipleMode) {
         const lines = rawValue.split(/\r?\n/);
+        // Invertiamo l'ordine per mantenere la sequenza corretta nell'inserimento in cima
         lines.reverse().forEach(line => {
             const clean = line.trim();
             if (clean) {
@@ -211,7 +217,7 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true, fixed
     }
 
     let finalFullName;
-    // Applica numerazione progressiva solo se NON è un inserimento manuale o se è un rimpiazzo post-seeding
+    // La numerazione progressiva scatta solo se il file è già stato visto nel seeding
     if (!isManual && window.historyCounters[baseName] !== undefined) {
         window.historyCounters[baseName]++;
         finalFullName = `${baseName} (${window.historyCounters[baseName]})${extension}`;
@@ -253,7 +259,6 @@ window.addNewTorrent = function(customName = null, triggerWorkflow = true, fixed
         </div>`;
 
     if (isManual) {
-        // Se manuale, inserisci in cima alla coda (dopo gli attivi)
         const lastActive = $('.active-download').last();
         if (lastActive.length) {
             $(html).insertAfter(lastActive);
@@ -307,7 +312,6 @@ window.startAnimation = function(id) {
             const originalFullName = $item.attr('data-base-name');
             const originalSize = $item.attr('data-size');
             
-            // Inizializza il contatore cronologia al termine del primo seeding
             const lastDot = originalFullName.lastIndexOf('.');
             const base = lastDot > 0 ? originalFullName.substring(0, lastDot) : originalFullName;
             if (window.historyCounters[base] === undefined) {
