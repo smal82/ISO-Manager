@@ -10,8 +10,8 @@ window.uploadSpeedAllocator = {
     
     // Calcola e distribuisce la banda upload tra tutti i torrent
     allocate: function() {
-        const countActive = parseInt($('#count-active').text(), 10);
-        const countSeeding = parseInt($('#count-seeding').text(), 10);
+        const countActive = parseInt($('#count-active').text(), 10) || 0;
+        const countSeeding = parseInt($('#count-seeding').text(), 10) || 0;
         
         let totalUpNodes = 0;
         
