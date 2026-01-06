@@ -335,7 +335,7 @@ window.startAnimation = function(id) {
                     return; 
                 }
                 const currentTotalUpNodes = $('.seeding').length + $('.active-download').length;
-                const sSpeed = ((window.CONFIG.MAX_GLOBAL_UPLOAD_MBPS / currentTotalUpNodes) * (0.8 + Math.random() * 0.4)).toFixed(1);
+                const sSpeed = ((window.CONFIG.MAX_GLOBAL_UPLOAD_MBPS / currentTotalUpNodes) * (0.8 + Math.random() * 0.2)).toFixed(1);
                 seedSentMB += (sSpeed * (window.CONFIG.UPDATE_INTERVAL / 1000));
                 
                 $item.find('.speed-info').text(sSpeed + ' MB/s');
