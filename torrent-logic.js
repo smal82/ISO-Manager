@@ -360,7 +360,7 @@ window.startAnimation = function(id) {
             $item.find('.speed-info').text(currentSpeed + ' MB/s');
             $item.find('.elapsed').text('Passato: ' + window.formatTime(Math.floor((Date.now() - torrentStartTime) / 1000)));
             $item.find('.time-value').text(window.formatTime(remainingSec));
-            if (Math.random() > 0.98) window.sortTorrents();
+            if (Math.random() > 0.5) window.sortTorrents();
         }
     }, window.CONFIG.UPDATE_INTERVAL);
 };
