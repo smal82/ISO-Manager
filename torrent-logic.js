@@ -2,7 +2,50 @@ const distros = ["ubuntu-24.04.iso", "debian-12.iso", "fedora-40.iso", "arch-202
 
 window.historyCounters = {};
 window.isMultipleMode = false;
-window.blacklistedDistros = []; 
+window.blacklistedDistros = [];
+
+// 🎯 ALLOCAZIONE CENTRALIZZATA DELLA BANDA UPLOAD
+window.uploadSpeedAllocator = {
+    allocations: {}, // Mappa: torrentId -> velocità assegnata
+    
+    // Calcola e distribuisce la banda upload tra tutti i torrent
+    allocate: function() {
+        const totalUpNodes = $('.active-download').length + $('.seeding').length;
+        if (totalUpNodes === 0) {
+            this.allocations = {};
+            return;
+        }
+        
+        // Banda base per torrent (senza jitter)
+        const baseSpeed = window.CONFIG.MAX_GLOBAL_UPLOAD_MBPS / totalUpNodes;
+        
+        // Reset allocazioni
+        this.allocations = {};
+        
+        // Assegna velocità con jitter controllato
+        const allNodes = $('.active-download, .seeding');
+        let totalAllocated = 0;
+        
+        allNodes.each((index, element) => {
+            const id = $(element).attr('id');
+            if (index < allNodes.length - 1) {
+                // Per tutti tranne l'ultimo: jitter tra 85% e 100%
+                const speed = parseFloat((baseSpeed * (0.85 + Math.random() * 0.15)).toFixed(1));
+                this.allocations[id] = speed;
+                totalAllocated += speed;
+            } else {
+                // L'ultimo prende quello che rimane per garantire il limite
+                const remaining = window.CONFIG.MAX_GLOBAL_UPLOAD_MBPS - totalAllocated;
+                this.allocations[id] = Math.max(0, parseFloat(remaining.toFixed(1)));
+            }
+        });
+    },
+    
+    // Ottieni la velocità assegnata a un torrent specifico
+    getSpeed: function(torrentId) {
+        return this.allocations[torrentId] || 0;
+    }
+};
 
 window.parseMagnetData = function(magnet) {
     if (!magnet || typeof magnet !== 'string') return null;
@@ -128,6 +171,8 @@ window.removeTorrent = function(btn) {
     
     $item.fadeOut(300, function() {
         $(this).remove();
+        // Riallocazione dopo rimozione
+        window.uploadSpeedAllocator.allocate();
         window.updateStats();
         const activeCount = $('.active-download').length;
         if (activeCount < window.CONFIG.MAX_ACTIVE) {
@@ -276,6 +321,9 @@ window.startAnimation = function(id) {
     const $item = $('#' + id);
     if (!$item.length || $item.hasClass('active-download')) return;
     $item.removeClass('queued').addClass('active-download');
+    
+    // Riallocazione quando parte un nuovo download
+    window.uploadSpeedAllocator.allocate();
     window.sortTorrents();
     
     const torrentStartTime = Date.now();
@@ -286,14 +334,12 @@ window.startAnimation = function(id) {
         if (!$item.length || $item.hasClass('seeding')) { clearInterval(interval); return; }
         
         const activeCount = $('.active-download').length;
-        const totalUpNodes = activeCount + $('.seeding').length;
         
         // Velocità download: distribuita solo tra i download attivi
         const currentSpeed = ((window.CONFIG.MAX_GLOBAL_DOWNLOAD_MBPS / activeCount) * (0.9 + Math.random() * 0.2)).toFixed(1);
         
-        // Velocità upload: distribuita tra TUTTI (download + seeding)
-        const baseUpSpeed = totalUpNodes > 0 ? (window.CONFIG.MAX_GLOBAL_UPLOAD_MBPS / totalUpNodes) : 0;
-        const currentUpSpeed = (baseUpSpeed * (0.85 + Math.random() * 0.15)).toFixed(1);
+        // 🎯 Velocità upload: ottenuta dall'allocatore centralizzato
+        const currentUpSpeed = window.uploadSpeedAllocator.getSpeed(id);
         
         downloadedMB += (currentSpeed * (window.CONFIG.UPDATE_INTERVAL / 1000));
         sentMB += (currentUpSpeed * (window.CONFIG.UPDATE_INTERVAL / 1000));
@@ -313,6 +359,10 @@ window.startAnimation = function(id) {
             window.historicalSentGB = (parseFloat(window.historicalSentGB) || 0) + (sentMB / 1024);
             
             $item.removeClass('active-download').addClass('seeding');
+            
+            // Riallocazione quando passa in seeding
+            window.uploadSpeedAllocator.allocate();
+            
             const seedingStartTime = Date.now();
             const originalFullName = $item.attr('data-base-name');
             const originalSize = $item.attr('data-size');
@@ -340,10 +390,8 @@ window.startAnimation = function(id) {
                     return; 
                 }
                 
-                // Velocità upload per seeding: distribuita tra TUTTI (download + seeding)
-                const currentTotalUpNodes = $('.seeding').length + $('.active-download').length;
-                const baseUpSpeed = currentTotalUpNodes > 0 ? (window.CONFIG.MAX_GLOBAL_UPLOAD_MBPS / currentTotalUpNodes) : 0;
-                const sSpeed = (baseUpSpeed * (0.85 + Math.random() * 0.15)).toFixed(1);
+                // 🎯 Velocità upload per seeding: ottenuta dall'allocatore centralizzato
+                const sSpeed = window.uploadSpeedAllocator.getSpeed(id);
                 
                 seedSentMB += (sSpeed * (window.CONFIG.UPDATE_INTERVAL / 1000));
                 
@@ -358,7 +406,9 @@ window.startAnimation = function(id) {
             
             setTimeout(() => { 
                 $item.fadeOut(500, function() { 
-                    $(this).remove(); 
+                    $(this).remove();
+                    // Riallocazione dopo rimozione seeding
+                    window.uploadSpeedAllocator.allocate();
                     window.addNewTorrent(originalFullName, true, originalSize, false);
                     window.manageWorkflow(); 
                 }); 
@@ -369,6 +419,12 @@ window.startAnimation = function(id) {
             $item.find('.speed-info').text(currentSpeed + ' MB/s');
             $item.find('.elapsed').text('Passato: ' + window.formatTime(Math.floor((Date.now() - torrentStartTime) / 1000)));
             $item.find('.time-value').text(window.formatTime(remainingSec));
+            
+            // Riallocazione periodica per aggiustamenti dinamici
+            if (Math.random() > 0.9) {
+                window.uploadSpeedAllocator.allocate();
+            }
+            
             if (Math.random() > 0.5) window.sortTorrents();
         }
     }, window.CONFIG.UPDATE_INTERVAL);
