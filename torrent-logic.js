@@ -329,18 +329,23 @@ window.startAnimation = function(id) {
             
             let seedSentMB = 0;
             const seedInt = setInterval(() => {
-                if (!$item.length || !$item.hasClass('seeding')) { 
-                    window.historicalSentGB = (parseFloat(window.historicalSentGB) || 0) + (seedSentMB / 1024);
-                    clearInterval(seedInt); 
-                    return; 
-                }
-                const currentTotalUpNodes = $('.seeding').length + $('.active-download').length;
-                const sSpeed = ((window.CONFIG.MAX_GLOBAL_UPLOAD_MBPS / currentTotalUpNodes) * (0.8 + Math.random() * 0.2)).toFixed(1);
-                seedSentMB += (sSpeed * (window.CONFIG.UPDATE_INTERVAL / 1000));
-                
-                $item.find('.speed-info').text(sSpeed + ' MB/s');
-                $item.find('.elapsed').text('Seed: ' + window.formatTime(Math.floor((Date.now() - seedingStartTime) / 1000)));
-            }, window.CONFIG.UPDATE_INTERVAL);
+    if (!$item.length || !$item.hasClass('seeding')) { 
+        window.historicalSentGB = (parseFloat(window.historicalSentGB) || 0) + (seedSentMB / 1024);
+        clearInterval(seedInt); 
+        return; 
+    }
+    const currentTotalUpNodes = $('.seeding').length + $('.active-download').length;
+    const sSpeed = ((window.CONFIG.MAX_GLOBAL_UPLOAD_MBPS / currentTotalUpNodes) * (0.8 + Math.random() * 0.2)).toFixed(1);
+    seedSentMB += (sSpeed * (window.CONFIG.UPDATE_INTERVAL / 1000));
+    
+    // Calcolo del countdown decrescente
+    const elapsedMs = Date.now() - seedingStartTime;
+    const remainingMs = window.CONFIG.SEEDING_DURATION - elapsedMs;
+    const remainingSec = Math.max(0, Math.floor(remainingMs / 1000));
+    
+    $item.find('.speed-info').text(sSpeed + ' MB/s');
+    $item.find('.elapsed').text('Seed: ' + window.formatTime(remainingSec));
+}, window.CONFIG.UPDATE_INTERVAL);
             
             setTimeout(() => { 
                 $item.fadeOut(500, function() { 
