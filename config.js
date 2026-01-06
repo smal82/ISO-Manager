@@ -1,9 +1,10 @@
 window.CONFIG = {
     FILL_LIMIT: 20,
     MAX_ACTIVE: 4,
-    SEEDING_DURATION: 9 * 60 * 1000,
+    SEEDING_DURATION: 9 * 60 * 1000, // 9 minuti
+    // SEEDING_DURATION: (8 * 60 + 30) * 1000, // 8 minuti e 30 secondi
     UPDATE_INTERVAL: 500,
-    STATS_INTERVAL: 2000,
+    STATS_INTERVAL: 500,
     DEFAULT_THEME: 'dark',
     MIN_SIZE_GB: 1.0,
     MAX_SIZE_GB: 10.0,
