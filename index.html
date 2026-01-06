@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Torrent Manager Pro - Speedtest Edition</title>
-    <link rel="stylesheet" href="style.css">
+    <script>
+const v = Date.now();
+document.write('<link rel="stylesheet" href="style.css?v=' + v + '">');
+</script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body data-theme="dark">
@@ -54,11 +57,14 @@
         </div>
     </div>
 
-    <script src="config.js"></script>
-    <script src="utils.js"></script>
-    <script src="network.js"></script>
-    <script src="stats-manager.js"></script>
-    <script src="torrent-logic.js"></script>
-    <script src="main.js"></script>
+    <script>
+const v = Date.now();
+document.write('<script src="config.js?v=' + v + '"><\/script>');
+document.write('<script src="utils.js?v=' + v + '"><\/script>');
+document.write('<script src="network.js?v=' + v + '"><\/script>');
+document.write('<script src="stats-manager.js?v=' + v + '"><\/script>');
+document.write('<script src="torrent-logic.js?v=' + v + '"><\/script>');
+document.write('<script src="main.js?v=' + v + '"><\/script>');
+</script>
 </body>
 </html>
