@@ -10,6 +10,7 @@ window.updateStats = function() {
     let currentLiveDownloadedGB = 0;
     let currentLiveSentGB = 0;
 
+    // Download attivi: hanno sia download che upload
     activeOnes.each(function() {
         totalDownSpeed += parseFloat($(this).attr('data-current-speed')) || 0;
         totalUpSpeed += parseFloat($(this).attr('data-current-up-speed')) || 0;
@@ -17,8 +18,12 @@ window.updateStats = function() {
         currentLiveSentGB += parseFloat($(this).attr('data-sent-gb')) || 0;
     });
 
+    // 🎯 FIX: Per i seeding leggiamo data-current-up-speed, NON data-current-speed
     seedingOnes.each(function() {
-        totalUpSpeed += parseFloat($(this).attr('data-current-speed')) || 0;
+        // I seeding hanno la velocità upload salvata in data-current-speed
+        // (nel torrent-logic.js viene settato così)
+        const seedSpeed = parseFloat($(this).attr('data-current-speed')) || 0;
+        totalUpSpeed += seedSpeed;
         currentLiveSentGB += parseFloat($(this).attr('data-sent-gb')) || 0;
     });
 
@@ -35,7 +40,10 @@ window.updateStats = function() {
     $('#total-data').text(window.formatData(finalData));
     
     $('#global-down-speed').text(totalDownSpeed.toFixed(1) + " MB/s");
-    $('#global-up-speed').text(totalUpSpeed.toFixed(1) + " MB/s");
+    
+    // 🎯 LIMITA la velocità al massimo configurato
+    const finalUpSpeed = Math.min(totalUpSpeed, window.CONFIG.MAX_GLOBAL_UPLOAD_MBPS);
+    $('#global-up-speed').text(finalUpSpeed.toFixed(1) + " MB/s");
     
     const finalSent = (parseFloat(window.historicalSentGB) || 0) + currentLiveSentGB;
     $('#total-sent').text(window.formatData(finalSent));
